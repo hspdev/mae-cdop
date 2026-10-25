@@ -1,0 +1,83 @@
+{
+  "xsappname": "mae-cdop",
+  "tenant-mode": "dedicated",
+  "description": "Security descriptor for MAE Autonomous Customer Data Operations Platform",
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.BulkJobOperator",
+      "description": "Create, monitor, cancel, and reprocess bulk jobs"
+    },
+    {
+      "name": "$XSAPPNAME.BulkJobAnalyst",
+      "description": "View job results, failure analysis, and executive summaries (read-only)"
+    },
+    {
+      "name": "$XSAPPNAME.BulkJobAdmin",
+      "description": "Full administrative access to all bulk job data"
+    },
+    {
+      "name": "$XSAPPNAME.CopilotUser",
+      "description": "Interact with the DUCI Operations Copilot"
+    }
+  ],
+  "attributes": [],
+  "role-templates": [
+    {
+      "name": "BulkJobOperatorRole",
+      "description": "Operations staff who create and manage bulk jobs",
+      "scope-references": [
+        "$XSAPPNAME.BulkJobOperator",
+        "$XSAPPNAME.BulkJobAnalyst",
+        "$XSAPPNAME.CopilotUser"
+      ]
+    },
+    {
+      "name": "BulkJobAnalystRole",
+      "description": "Analysts who review job results and generate reports",
+      "scope-references": [
+        "$XSAPPNAME.BulkJobAnalyst",
+        "$XSAPPNAME.CopilotUser"
+      ]
+    },
+    {
+      "name": "BulkJobAdminRole",
+      "description": "Platform administrators with full access",
+      "scope-references": [
+        "$XSAPPNAME.BulkJobAdmin",
+        "$XSAPPNAME.BulkJobOperator",
+        "$XSAPPNAME.BulkJobAnalyst",
+        "$XSAPPNAME.CopilotUser"
+      ]
+    }
+  ],
+  "role-collections": [
+    {
+      "name": "DUCI_MAE_Operators",
+      "description": "DUCI Operations team bulk job operators",
+      "role-template-references": [
+        "$XSAPPNAME.BulkJobOperatorRole"
+      ]
+    },
+    {
+      "name": "DUCI_MAE_Analysts",
+      "description": "DUCI Business analysts and executives",
+      "role-template-references": [
+        "$XSAPPNAME.BulkJobAnalystRole"
+      ]
+    },
+    {
+      "name": "DUCI_MAE_Admins",
+      "description": "DUCI IT administrators",
+      "role-template-references": [
+        "$XSAPPNAME.BulkJobAdminRole"
+      ]
+    }
+  ],
+  "oauth2-configuration": {
+    "token-validity": 43200,
+    "redirect-uris": [
+      "https://*.cfapps.*.hana.ondemand.com/**",
+      "http://localhost:5000/**"
+    ]
+  }
+}
