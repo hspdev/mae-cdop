@@ -7,15 +7,19 @@
 
 'use strict';
 
+// Force in-memory SQLite for CI — must be set before cds.test() loads
+process.env.NODE_ENV = 'test';
+process.env.SIMULATION_MODE = 'true';
+
 const cds = require('@sap/cds');
 
-// cds.test() boots a full CAP server (SQLite in-memory) and exposes .axios
-const { GET, POST, axios } = cds.test(__dirname + '/../..').in(__dirname + '/../..');
+// Override db to use in-memory for tests
+cds.env.requires.db = {
+  kind: 'sqlite',
+  credentials: { url: ':memory:' }
+};
 
-beforeAll(async () => {
-  process.env.NODE_ENV = 'test';
-  process.env.SIMULATION_MODE = 'true';
-}, 30000);
+const { GET, POST } = cds.test(__dirname + '/../..').in(__dirname + '/../..');
 
 // ── Health ─────────────────────────────────────────────────────────────────
 
