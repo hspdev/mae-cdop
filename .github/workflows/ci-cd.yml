@@ -102,12 +102,13 @@ jobs:
         env:
           CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
-          # Use cf set-oauth-token (CF CLI v8 built-in command)
+          # CF CLI reads CF_ACCESS_TOKEN env var natively for token-based auth
           cf api https://api.cf.us10.hana.ondemand.com
-          cf set-oauth-token "$CF_ACCESS_TOKEN"
           cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
 
       - name: Deploy MTA
+        env:
+          CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
           MTAR=$(ls mta_archives/*.mtar | head -1)
           echo "Deploying: $MTAR"
