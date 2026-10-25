@@ -103,9 +103,11 @@ jobs:
           cf api ${{ env.CF_API }}
 
           # Inject fresh token into XDG config (where CF CLI v7 reads on this runner)
+          # CF CLI expects "bearer <jwt>" format in AccessToken field
           node -e "
             const fs=require('fs'),path=require('path'),os=require('os');
-            const tok='bearer '+process.env.ACCESS_TOKEN;
+            const raw=process.env.ACCESS_TOKEN;
+            const tok=raw.startsWith('bearer ')?raw:'bearer '+raw;
             const xdg=process.env.XDG_CONFIG_HOME||path.join(os.homedir(),'.config');
             [path.join(xdg,'cf','config.json'), path.join(os.homedir(),'.cf','config.json')].forEach(p=>{
               try {
