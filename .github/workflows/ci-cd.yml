@@ -77,10 +77,10 @@ jobs:
           name: mta-archive
           path: mta_archives/
 
-      - name: Install CF CLI v8
+      - name: Install CF CLI v7
         run: |
-          curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" | tar -zx
-          sudo mv cf8 /usr/local/bin/cf
+          curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v7&source=github" | tar -zx
+          sudo mv cf7 /usr/local/bin/cf
           cf version
 
       - name: Install MTA CF plugin
