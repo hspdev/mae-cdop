@@ -10,6 +10,17 @@ sap.ui.define([
       toolPage.setSideExpanded(!toolPage.getSideExpanded());
     },
 
+    onInit: function () {
+      // Highlight dashboard item in side nav on init
+      const sideNav = this.byId("sideNav");
+      if (sideNav) {
+        const items = sideNav.getItems();
+        if (items && items.length) {
+          sideNav.setSelectedItem(items[0]);
+        }
+      }
+    },
+
     onNavItemSelect: function (oEvent) {
       const key = oEvent.getParameter("item").getKey();
       const router = this.getOwnerComponent().getRouter();
