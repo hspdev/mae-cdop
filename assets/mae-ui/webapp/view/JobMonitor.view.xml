@@ -1,0 +1,104 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.JobMonitor"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:t="sap.ui.table"
+  xmlns:core="sap.ui.core"
+  displayBlock="true">
+
+  <Page title="Job Monitor" showNavButton="false">
+    <customHeader>
+      <Bar>
+        <contentLeft>
+          <Title text="Bulk Job Monitor" level="H3"/>
+        </contentLeft>
+        <contentRight>
+          <Select id="statusFilter" change=".onStatusFilterChange">
+            <core:Item key="ALL"               text="All Statuses"/>
+            <core:Item key="QUEUED"            text="Queued"/>
+            <core:Item key="IN_PROGRESS"       text="In Progress"/>
+            <core:Item key="RETRYING"          text="Retrying"/>
+            <core:Item key="COMPLETED"         text="Completed"/>
+            <core:Item key="PARTIALLY_COMPLETED" text="Partially Completed"/>
+            <core:Item key="FAILED"            text="Failed"/>
+            <core:Item key="CANCELLED"         text="Cancelled"/>
+          </Select>
+          <Button icon="sap-icon://refresh" tooltip="Refresh" press=".onRefresh"/>
+          <Button text="New Job" type="Emphasized" icon="sap-icon://add" press=".onNewJob"/>
+        </contentRight>
+      </Bar>
+    </customHeader>
+
+    <content>
+      <t:Table
+        id="jobsTable"
+        rows="{path: '/BatchJobs', sorter: {path: 'CREATED_ON', descending: true}}"
+        visibleRowCount="15"
+        selectionMode="Single"
+        rowSelectionChange=".onRowSelect"
+        enableBusyIndicator="true"
+        alternateRowColors="true">
+
+        <t:toolbar>
+          <Toolbar>
+            <Title text="Jobs" level="H4"/>
+            <ToolbarSpacer/>
+            <SearchField
+              width="20rem"
+              placeholder="Search by Batch ID or Type..."
+              liveChange=".onSearch"/>
+          </Toolbar>
+        </t:toolbar>
+
+        <t:columns>
+          <t:Column width="12rem" label="Batch ID" hAlign="Begin">
+            <Text text="{BATCH_ID}" wrapping="false"/>
+          </t:Column>
+          <t:Column width="10rem" label="Job Type">
+            <Text text="{JOB_TYPE}"/>
+          </t:Column>
+          <t:Column width="8rem" label="Status">
+            <ObjectStatus
+              text="{STATUS}"
+              state="{= ${STATUS} === 'COMPLETED' ? 'Success' : ${STATUS} === 'IN_PROGRESS' ? 'Warning' : ${STATUS} === 'FAILED' ? 'Error' : ${STATUS} === 'PARTIALLY_COMPLETED' ? 'Warning' : 'None'}"/>
+          </t:Column>
+          <t:Column width="10rem" label="Current Step">
+            <Text text="{CURRENT_STEP}"/>
+          </t:Column>
+          <t:Column width="6rem" label="Progress" hAlign="Center">
+            <ProgressIndicator
+              percentValue="{= Math.round(${PROCESSED_ACCOUNTS} / Math.max(${TOTAL_ACCOUNTS}, 1) * 100)}"
+              showValue="true"
+              state="{= ${STATUS} === 'COMPLETED' ? 'Success' : ${STATUS} === 'FAILED' ? 'Error' : 'None'}"/>
+          </t:Column>
+          <t:Column width="5rem" label="Total" hAlign="End">
+            <Text text="{TOTAL_ACCOUNTS}"/>
+          </t:Column>
+          <t:Column width="5rem" label="Success" hAlign="End">
+            <Text text="{SUCCESS_COUNT}" class="sapUiPositiveText"/>
+          </t:Column>
+          <t:Column width="5rem" label="Failed" hAlign="End">
+            <Text text="{FAILED_COUNT}" class="sapUiNegativeText"/>
+          </t:Column>
+          <t:Column width="4rem" label="Sim" hAlign="Center">
+            <CheckBox selected="{SIMULATION_MODE}" enabled="false"/>
+          </t:Column>
+          <t:Column width="8rem" label="Duration">
+            <Text text="{= ${DURATION_SECONDS} ? ${DURATION_SECONDS} + 's' : '—'}"/>
+          </t:Column>
+          <t:Column width="10rem" label="Created">
+            <Text text="{CREATED_ON}"/>
+          </t:Column>
+          <t:Column width="6rem" label="Actions">
+            <HBox>
+              <Button icon="sap-icon://detail-view"  tooltip="View Details"   press=".onViewDetails" type="Transparent"/>
+              <Button icon="sap-icon://alert"        tooltip="Failure Analysis" press=".onViewFailures" type="Transparent"/>
+              <Button icon="sap-icon://cancel"       tooltip="Cancel"         press=".onCancelJob" type="Transparent" enabled="{= ${STATUS} === 'QUEUED' || ${STATUS} === 'IN_PROGRESS'}"/>
+              <Button icon="sap-icon://refresh"      tooltip="Reprocess"      press=".onReprocess" type="Transparent" enabled="{= ${STATUS} === 'FAILED' || ${STATUS} === 'PARTIALLY_COMPLETED'}"/>
+            </HBox>
+          </t:Column>
+        </t:columns>
+      </t:Table>
+    </content>
+  </Page>
+</mvc:View>
