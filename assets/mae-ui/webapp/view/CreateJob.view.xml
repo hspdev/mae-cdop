@@ -1,0 +1,207 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.CreateJob"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:f="sap.ui.layout.form"
+  xmlns:core="sap.ui.core"
+  displayBlock="true">
+
+  <Page title="Create Bulk Job" showNavButton="true" navButtonPress=".onNavBack">
+    <customHeader>
+      <Bar>
+        <contentLeft>
+          <Title text="Create New Bulk Job" level="H3"/>
+        </contentLeft>
+        <contentRight>
+          <Button text="Reset"  press=".onReset"/>
+          <Button text="Validate" press=".onValidate"/>
+          <Button text="Create Job" type="Emphasized" icon="sap-icon://add" press=".onCreateJob"/>
+        </contentRight>
+      </Bar>
+    </customHeader>
+
+    <content>
+      <IconTabBar id="jobConfigTabs" select=".onTabSelect" expandable="false">
+
+        <!-- Tab 1: Job Type Selection -->
+        <IconTabFilter text="1. Job Type" icon="sap-icon://task" key="type">
+          <f:SimpleForm editable="true" layout="ResponsiveGridLayout" title="Select Job Type" labelSpanL="4" labelSpanM="4">
+            <f:content>
+              <Label text="Job Type" required="true"/>
+              <Select id="jobTypeSelect" selectedKey="{createJob>/jobType}" change=".onJobTypeChange" width="100%">
+                <core:Item key="MAILING_ADDRESS_UPDATE"     text="Mailing Address Update"/>
+                <core:Item key="CONTRACT_ACCOUNT_UPDATE"    text="Contract Account Update"/>
+                <core:Item key="CUSTOMER_PREFERENCE_UPDATE" text="Customer Preference Update"/>
+                <core:Item key="NOTIFICATION_REQUEST"       text="Notification Request"/>
+              </Select>
+
+              <Label text="Description"/>
+              <Input id="descInput" value="{createJob>/description}" placeholder="Brief description of this job run" maxLength="500"/>
+
+              <Label text="Simulation Mode"/>
+              <CheckBox id="simModeCheck" selected="{createJob>/simulationMode}" text="Run in simulation mode (no actual data changes — recommended for testing)"/>
+            </f:content>
+          </f:SimpleForm>
+
+          <!-- Job Type Information -->
+          <MessageStrip
+            id="jobTypeInfo"
+            text="{createJob>/jobTypeDescription}"
+            type="Information"
+            showIcon="true"
+            visible="{= !!${createJob>/jobTypeDescription}}"
+            class="sapUiSmallMargin"/>
+        </IconTabFilter>
+
+        <!-- Tab 2: Account Selection -->
+        <IconTabFilter text="2. Account Selection" icon="sap-icon://customer" key="accounts">
+          <f:SimpleForm editable="true" layout="ResponsiveGridLayout" title="Select Contract Accounts" labelSpanL="4" labelSpanM="4">
+            <f:content>
+              <Label text="Selection Method" required="true"/>
+              <Select id="selectionMethod" selectedKey="{createJob>/selectionMethod}" change=".onSelectionMethodChange" width="100%">
+                <core:Item key="FILTER"   text="Filter by City/Region (recommended for demo)"/>
+                <core:Item key="UPLOAD"   text="Upload Account List (CSV)"/>
+                <core:Item key="MANUAL"   text="Enter Account Numbers Manually"/>
+              </Select>
+
+              <!-- Filter option -->
+              <Label text="City" visible="{= ${createJob>/selectionMethod} === 'FILTER'}"/>
+              <Input id="filterCity" value="{createJob>/filter/city}" placeholder="e.g. Allentown" visible="{= ${createJob>/selectionMethod} === 'FILTER'}"/>
+
+              <Label text="Days Back" visible="{= ${createJob>/selectionMethod} === 'FILTER'}"/>
+              <StepInput id="filterDays" value="{createJob>/filter/daysBack}" min="1" max="365" step="30" visible="{= ${createJob>/selectionMethod} === 'FILTER'}"/>
+
+              <!-- Manual entry -->
+              <Label text="Contract Accounts" visible="{= ${createJob>/selectionMethod} === 'MANUAL'}"/>
+              <TextArea
+                id="manualAccounts"
+                value="{createJob>/manualAccountsText}"
+                placeholder="Enter contract account numbers, one per line or comma-separated&#10;Example:&#10;CA000000001&#10;CA000000002"
+                rows="6"
+                width="100%"
+                visible="{= ${createJob>/selectionMethod} === 'MANUAL'}"/>
+
+              <!-- Upload -->
+              <Label text="CSV File" visible="{= ${createJob>/selectionMethod} === 'UPLOAD'}"/>
+              <FileUploader
+                id="csvUploader"
+                fileType="csv"
+                visible="{= ${createJob>/selectionMethod} === 'UPLOAD'}"
+                change=".onFileUpload"
+                placeholder="Select CSV with CONTRACT_ACCOUNT column"/>
+            </f:content>
+          </f:SimpleForm>
+        </IconTabFilter>
+
+        <!-- Tab 3: Job Parameters -->
+        <IconTabFilter text="3. Parameters" icon="sap-icon://settings" key="params">
+          <!-- Mailing Address Update params -->
+          <Panel
+            headerText="Mailing Address Parameters"
+            visible="{= ${createJob>/jobType} === 'MAILING_ADDRESS_UPDATE'}"
+            class="sapUiSmallMargin">
+            <f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4">
+              <f:content>
+                <Label text="Address Source"/>
+                <Select id="addrSource" selectedKey="{createJob>/addressSource}" change=".onAddrSourceChange" width="100%">
+                  <core:Item key="HISTORY" text="Use Existing Address History (from Z_ADDRESS_HISTORY)"/>
+                  <core:Item key="MANUAL"  text="Specify New Address for All Accounts"/>
+                </Select>
+                <Label text="Street Address" visible="{= ${createJob>/addressSource} === 'MANUAL'}"/>
+                <Input value="{createJob>/newAddress/streetAddress}" placeholder="100 Main Street" visible="{= ${createJob>/addressSource} === 'MANUAL'}"/>
+                <Label text="City" visible="{= ${createJob>/addressSource} === 'MANUAL'}"/>
+                <Input value="{createJob>/newAddress/city}" placeholder="Allentown" visible="{= ${createJob>/addressSource} === 'MANUAL'}"/>
+                <Label text="State" visible="{= ${createJob>/addressSource} === 'MANUAL'}"/>
+                <Input value="{createJob>/newAddress/stateCode}" placeholder="PA" maxLength="2" visible="{= ${createJob>/addressSource} === 'MANUAL'}"/>
+                <Label text="ZIP Code" visible="{= ${createJob>/addressSource} === 'MANUAL'}"/>
+                <Input value="{createJob>/newAddress/zipCode}" placeholder="18101" maxLength="10" visible="{= ${createJob>/addressSource} === 'MANUAL'}"/>
+              </f:content>
+            </f:SimpleForm>
+          </Panel>
+
+          <!-- Contract Account Update params -->
+          <Panel
+            headerText="Contract Account Parameters"
+            visible="{= ${createJob>/jobType} === 'CONTRACT_ACCOUNT_UPDATE'}"
+            class="sapUiSmallMargin">
+            <f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4">
+              <f:content>
+                <Label text="Billing Class"/>
+                <Select id="billingClass" selectedKey="{createJob>/updates/billingClass}" width="100%">
+                  <core:Item key=""           text="— No Change —"/>
+                  <core:Item key="STANDARD"   text="Standard"/>
+                  <core:Item key="BUDGET"     text="Budget"/>
+                  <core:Item key="COMMERCIAL" text="Commercial"/>
+                  <core:Item key="INDUSTRIAL" text="Industrial"/>
+                  <core:Item key="PREPAID"    text="Prepaid"/>
+                </Select>
+                <Label text="Account Status"/>
+                <Select id="accountStatus" selectedKey="{createJob>/updates/status}" width="100%">
+                  <core:Item key=""          text="— No Change —"/>
+                  <core:Item key="ACTIVE"    text="Active"/>
+                  <core:Item key="INACTIVE"  text="Inactive"/>
+                  <core:Item key="SUSPENDED" text="Suspended"/>
+                </Select>
+              </f:content>
+            </f:SimpleForm>
+          </Panel>
+
+          <!-- Notification Request params -->
+          <Panel
+            headerText="Notification Parameters"
+            visible="{= ${createJob>/jobType} === 'NOTIFICATION_REQUEST'}"
+            class="sapUiSmallMargin">
+            <f:SimpleForm editable="true" layout="ResponsiveGridLayout" labelSpanL="4" labelSpanM="4">
+              <f:content>
+                <Label text="Notification Type" required="true"/>
+                <Select selectedKey="{createJob>/notificationType}" width="100%">
+                  <core:Item key="ADDRESS_CONFIRMATION" text="Address Confirmation"/>
+                  <core:Item key="ACCOUNT_UPDATE"       text="Account Update"/>
+                  <core:Item key="BILLING_REMINDER"     text="Billing Reminder"/>
+                  <core:Item key="CAMPAIGN"             text="Campaign"/>
+                </Select>
+                <Label text="Channel" required="true"/>
+                <Select selectedKey="{createJob>/channel}" width="100%">
+                  <core:Item key="EMAIL" text="Email"/>
+                  <core:Item key="SMS"   text="SMS"/>
+                  <core:Item key="MAIL"  text="Physical Mail"/>
+                </Select>
+                <Label text="Subject" required="true"/>
+                <Input value="{createJob>/subject}" placeholder="Important: Your address has been updated"/>
+                <Label text="Message Content"/>
+                <TextArea value="{createJob>/content}" rows="4" width="100%"
+                  placeholder="Dear {{customerName}}, your contract account {{contractAccount}} address has been updated..."/>
+              </f:content>
+            </f:SimpleForm>
+          </Panel>
+        </IconTabFilter>
+
+        <!-- Tab 4: Review & Submit -->
+        <IconTabFilter text="4. Review" icon="sap-icon://accept" key="review">
+          <VBox class="sapUiSmallMargin">
+            <Panel headerText="Job Summary" class="sapUiSmallMarginBottom">
+              <f:SimpleForm layout="ResponsiveGridLayout" labelSpanL="4">
+                <f:content>
+                  <Label text="Job Type"/>      <Text text="{createJob>/jobType}"/>
+                  <Label text="Description"/>   <Text text="{createJob>/description}"/>
+                  <Label text="Sim Mode"/>      <Text text="{= ${createJob>/simulationMode} ? 'YES — no data changes' : 'NO — real execution'}"/>
+                  <Label text="Selection"/>     <Text text="{createJob>/selectionSummary}"/>
+                </f:content>
+              </f:SimpleForm>
+            </Panel>
+            <MessageStrip
+              text="This job will process customer records. In simulation mode, no actual changes will be made. Please review and confirm."
+              type="Warning"
+              showIcon="true"/>
+            <Button
+              text="Create and Queue Job"
+              type="Emphasized"
+              icon="sap-icon://play"
+              press=".onCreateJob"
+              class="sapUiSmallMarginTop"/>
+          </VBox>
+        </IconTabFilter>
+      </IconTabBar>
+    </content>
+  </Page>
+</mvc:View>
