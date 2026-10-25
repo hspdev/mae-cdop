@@ -102,14 +102,9 @@ jobs:
         env:
           CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
-          mkdir -p "$HOME/.cf"
-          node -e "
-            const fs=require('fs'),path=require('path');
-            const cfg={ConfigVersion:3,Target:'https://api.cf.us10.hana.ondemand.com',APIVersion:'3.229.0',AuthorizationEndpoint:'https://login.cf.us10.hana.ondemand.com',DopplerEndPoint:'wss://doppler.cf.us10.hana.ondemand.com:443',UaaEndpoint:'https://uaa.cf.us10.hana.ondemand.com',RoutingAPIEndpoint:'https://api.cf.us10.hana.ondemand.com/routing',AccessToken:process.env.CF_ACCESS_TOKEN,RefreshToken:'',OrganizationFields:{GUID:'',Name:'NA_GDH_ai-americasdelivery'},SpaceFields:{GUID:'',Name:'AIspace'},SSLDisabled:false,AsyncTimeout:0,ColorEnabled:'',Locale:'',PluginRepos:[{Name:'CF-Community',URL:'https://plugins.cloudfoundry.org'}],MinCLIVersion:'',MinRecommendedCLIVersion:''};
-            const p=path.join(process.env.HOME,'.cf','config.json');
-            fs.writeFileSync(p,JSON.stringify(cfg,null,2));
-            console.log('CF config written to',p,'token length:',cfg.AccessToken.length);
-          "
+          # Use cf set-oauth-token (CF CLI v8 built-in command)
+          cf api https://api.cf.us10.hana.ondemand.com
+          cf set-oauth-token "$CF_ACCESS_TOKEN"
           cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
 
       - name: Deploy MTA
