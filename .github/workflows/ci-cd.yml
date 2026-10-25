@@ -90,10 +90,12 @@ jobs:
           if [[ "$ACCESS_TOKEN" == ERROR* ]]; then echo "Token refresh failed: $ACCESS_TOKEN"; exit 1; fi
           echo "Access token obtained (${#ACCESS_TOKEN} chars)"
           cf api ${CF_API}
+          export CF_NEW_TOKEN="$ACCESS_TOKEN"
           node -e "
             var fs=require('fs'),path=require('path'),os=require('os');
-            var raw=process.env.TOK||'';
+            var raw=process.env.CF_NEW_TOKEN||'';
             var tok=raw.startsWith('bearer ')?raw:'bearer '+raw;
+            console.log('Token raw length:',raw.length,'bearer length:',tok.length);
             var xdg=process.env.XDG_CONFIG_HOME||path.join(os.homedir(),'.config');
             [path.join(xdg,'cf','config.json'),path.join(os.homedir(),'.cf','config.json')].forEach(function(p){
               try{
@@ -105,7 +107,7 @@ jobs:
                 console.log('Written',p,'len='+tok.length);
               }catch(e){console.log('Skip',p,e.message);}
             });
-          " TOK="$ACCESS_TOKEN"
+          "
           cf target -o "${CF_ORG}" -s "${CF_SPACE}"
           echo "CF login successful"
 
