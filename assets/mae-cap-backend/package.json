@@ -6,7 +6,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node scripts/deploy-db.js && cds-serve",
+    "start": "node scripts/deploy-db.js && node node_modules/@sap/cds/bin/cds-serve.js",
     "start:local": "cds watch",
     "build": "cds build --production",
     "postinstall": "node scripts/apply-shim.js",
