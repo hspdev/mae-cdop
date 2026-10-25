@@ -98,6 +98,15 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
 /* Progress bar */
 .progress{background:#e5e5e5;border-radius:4px;height:8px;overflow:hidden}
 .progress-bar{height:100%;background:#0a6ed1;border-radius:4px;transition:width .3s}
+/* Modal */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:10px;padding:28px;width:100%;max-width:520px;box-shadow:0 8px 32px rgba(0,0,0,.18);position:relative;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:18px;color:#32363a}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid #f0f0f0}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#6a7988;line-height:1}
+/* Inline editable cell */
+.editable{border-bottom:1px dashed #0a6ed1;cursor:pointer;min-width:40px;display:inline-block}
+.editable:hover{background:#e8f0fe;border-radius:3px}
 /* Responsive */
 @media(max-width:768px){#sidebar{width:56px}.nav-label{display:none}#sidebar-header .logo{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -118,6 +127,7 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
       <div class="nav-item" onclick="navTo('failureAnalysis')"><span class="icon">⚠️</span><span class="nav-label">Failure Analysis</span></div>
       <div class="nav-item" onclick="navTo('executive')"><span class="icon">📊</span><span class="nav-label">Executive Summary</span></div>
       <div class="nav-item" onclick="navTo('insights')"><span class="icon">⚡</span><span class="nav-label">Platform Insights</span></div>
+      <div class="nav-item" onclick="navTo('customers')"><span class="icon">👤</span><span class="nav-label">Customer Records</span></div>
     </nav>
   </div>
 
@@ -353,15 +363,43 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
         </div>
       </div>
 
+      <!-- CUSTOMER RECORDS -->
+      <div id="page-customers" class="page">
+        <div class="page-title">👤 Customer Records</div>
+        <div class="panel">
+          <div class="panel-header">Search &amp; Edit Customer / Address Data</div>
+          <div class="panel-body">
+            <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+              <input id="cust-search" class="form-control" placeholder="Contract Account (e.g. CA000001) or City (e.g. Allentown)" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')searchCustomers()"/>
+              <button class="btn btn-primary" onclick="searchCustomers()">🔍 Search</button>
+              <button class="btn btn-secondary" onclick="searchCustomers('all')">Show All</button>
+            </div>
+            <div id="cust-results">
+              <div style="color:#6a7988;font-size:13px;text-align:center;padding:20px">Enter a contract account number or city to search</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /shell -->
+
+<!-- ── GLOBAL MODAL ─────────────────────────────────────────────────────────── -->
+<div id="modal-backdrop" class="modal-backdrop" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-title" id="modal-title">Edit</div>
+    <div id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
 
 <div id="toast"></div>
 
 <script>
 // ── Navigation ────────────────────────────────────────────────────────────────
-var NAV_PAGES = ['dashboard','copilot','createJob','jobMonitor','failureAnalysis','executive','insights'];
+var NAV_PAGES = ['dashboard','copilot','createJob','jobMonitor','failureAnalysis','executive','insights','customers'];
 
 function showPage(id, navEl) {
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
@@ -563,7 +601,7 @@ function renderFailures(failures) {
       '<td style="font-family:monospace">'+f.CONTRACT_ACCOUNT+'</td>'+
       '<td>'+f.ERROR_MESSAGE+'</td>'+
       '<td style="text-align:center">'+f.RETRY_ATTEMPT+' / 3</td>'+
-      '<td><button class="btn btn-secondary btn-sm" onclick="toast(\'Reprocess job queued for \'+\''+f.CONTRACT_ACCOUNT+'\')">↩ Reprocess</button></td></tr>';
+      '<td><button class="btn btn-secondary btn-sm" onclick="editFailedRecord(\''+f.CONTRACT_ACCOUNT+'\',\''+f.ERROR_MESSAGE.replace(/'/g,'')+'\',\''+(f.BATCH_ID||'')+'\')" >✏️ Edit &amp; Reprocess</button></td></tr>';
   }).join('');
 }
 
@@ -646,6 +684,301 @@ function sendMessage() {
     .then(function(r){return r.json();})
     .then(function(d){ setTimeout(function(){addChatMessage('bot', d.response||d.message||getCopilotReply(msg));}, 400); })
     .catch(function(){ setTimeout(function(){addChatMessage('bot', getCopilotReply(msg));}, 400); });
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────────────────
+function openModal(title, bodyHtml, buttons) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  document.getElementById('modal-footer').innerHTML = buttons.map(function(b){
+    return '<button class="btn '+(b.primary?'btn-primary':'btn-secondary')+'" onclick="'+b.action+'">'+b.label+'</button>';
+  }).join('');
+  document.getElementById('modal-backdrop').style.display = 'flex';
+}
+function closeModal() {
+  document.getElementById('modal-backdrop').style.display = 'none';
+  document.getElementById('modal-body').innerHTML = '';
+}
+function modalVal(id) { return document.getElementById(id) ? document.getElementById(id).value : ''; }
+
+// ── Confirm helper ─────────────────────────────────────────────────────────────
+function confirmAction(message, onConfirm) {
+  openModal('Confirm Action',
+    '<div style="font-size:14px;line-height:1.7;color:#32363a">'+message+'</div>',
+    [
+      {label:'Cancel', action:'closeModal()'},
+      {label:'✅ Confirm', primary:true, action:'('+onConfirm+')();closeModal()'}
+    ]
+  );
+}
+
+// ── Cancel Job ────────────────────────────────────────────────────────────────
+function cancelJob(batchId, jobType) {
+  openModal('Cancel Job',
+    '<div style="font-size:14px;line-height:1.7">'+
+    '<p>Are you sure you want to <strong>cancel</strong> this job?</p>'+
+    '<div style="background:#fff3e0;border-radius:6px;padding:12px;margin-top:12px;font-size:13px">'+
+    '<strong>Batch ID:</strong> '+batchId+'<br>'+
+    '<strong>Type:</strong> '+jobType.replace(/_/g,' ')+'<br>'+
+    '<span style="color:#e9730c">⚠️ Any records already processed will NOT be rolled back.</span></div></div>',
+    [
+      {label:'Keep Job', action:'closeModal()'},
+      {label:'🚫 Cancel Job', primary:true, action:'executeCancelJob("'+batchId+'")'}
+    ]
+  );
+}
+function executeCancelJob(batchId) {
+  closeModal();
+  fetch('/api/bulk-jobs/'+batchId+'/cancel', {method:'POST', headers:{'Content-Type':'application/json'}})
+    .then(function(r){return r.json();})
+    .then(function(d){ toast(d.message||'Job cancelled'); loadJobs(); })
+    .catch(function(){
+      // Demo: update local state
+      DEMO_JOBS.forEach(function(j){ if(j.BATCH_ID===batchId) j.STATUS='CANCELLED'; });
+      renderJobs(DEMO_JOBS);
+      toast('Job cancelled (demo mode)');
+    });
+}
+
+// ── Edit + Reprocess Failed Record ────────────────────────────────────────────
+function editFailedRecord(contractAccount, errorMessage, batchId) {
+  var body =
+    '<div style="margin-bottom:14px;background:#fdecea;border-radius:6px;padding:10px;font-size:13px">'+
+    '<strong>Contract Account:</strong> '+contractAccount+'<br>'+
+    '<strong>Original Error:</strong> '+errorMessage+'</div>'+
+    '<div class="form-row"><label class="form-label">Fix: Updated Street Address</label>'+
+    '<input id="fix-street" class="form-control" placeholder="e.g. 555 Market St"/></div>'+
+    '<div class="form-row"><label class="form-label">City</label>'+
+    '<input id="fix-city" class="form-control" placeholder="e.g. Allentown"/></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+    '<div class="form-row"><label class="form-label">State</label>'+
+    '<input id="fix-state" class="form-control" placeholder="PA"/></div>'+
+    '<div class="form-row"><label class="form-label">ZIP</label>'+
+    '<input id="fix-zip" class="form-control" placeholder="18104"/></div></div>'+
+    '<div class="form-row"><label class="form-label">Resolution Note</label>'+
+    '<input id="fix-note" class="form-control" placeholder="e.g. Corrected ZIP code per USPS lookup"/></div>';
+
+  openModal('Edit &amp; Reprocess: '+contractAccount, body, [
+    {label:'Cancel', action:'closeModal()'},
+    {label:'💾 Save Only', action:'saveFailureResolution("'+contractAccount+'","'+batchId+'",false)'},
+    {label:'↩ Save &amp; Reprocess', primary:true, action:'saveFailureResolution("'+contractAccount+'","'+batchId+'",true)'}
+  ]);
+}
+
+function saveFailureResolution(contractAccount, batchId, andReprocess) {
+  var street = modalVal('fix-street');
+  var city   = modalVal('fix-city');
+  var state  = modalVal('fix-state');
+  var zip    = modalVal('fix-zip');
+  var note   = modalVal('fix-note');
+
+  if (!street && !city && !zip) {
+    toast('⚠️ Please fill in at least one corrected field'); return;
+  }
+
+  var confirmMsg =
+    '<strong>Contract Account:</strong> '+contractAccount+'<br>'+
+    (street?'<strong>Street:</strong> '+street+'<br>':'')+
+    (city?'<strong>City:</strong> '+city+'<br>':'')+
+    (state?'<strong>State:</strong> '+state+'<br>':'')+
+    (zip?'<strong>ZIP:</strong> '+zip+'<br>':'')+
+    (note?'<strong>Note:</strong> '+note+'<br>':'')+
+    '<br><span style="color:'+(andReprocess?'#0a6ed1':'#107e3e')+'">'+
+    (andReprocess?'This record will be marked resolved and queued for reprocessing.':'This record will be marked resolved only.')+
+    '</span>';
+
+  openModal('Confirm Update'+'<span style="font-weight:normal;font-size:13px;color:#6a7988"> — '+contractAccount+'</span>',
+    '<div style="font-size:13px;line-height:1.8">'+confirmMsg+'</div>',
+    [
+      {label:'Back', action:'closeModal()'},
+      {label: andReprocess?'✅ Confirm &amp; Reprocess':'✅ Confirm Save', primary:true,
+        action:'executeFailureResolution("'+contractAccount+'","'+batchId+'",'+andReprocess+',"'+
+          encodeURIComponent(JSON.stringify({street:street,city:city,state:state,zip:zip,note:note}))+'")'
+      }
+    ]
+  );
+}
+
+function executeFailureResolution(contractAccount, batchId, andReprocess, encodedData) {
+  closeModal();
+  var data = JSON.parse(decodeURIComponent(encodedData));
+
+  // Mark resolved in failure logs
+  fetch('/odata/v4/AdminService/BatchJobFailureLogs', {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({RESOLVED:true, RESOLUTION_NOTE: data.note||'Manually resolved'})
+  }).catch(function(){}); // best effort
+
+  if (andReprocess) {
+    // Submit a reprocess job for just this record
+    var payload = {
+      jobType: 'MAILING_ADDRESS_UPDATE',
+      parameters: {
+        contractAccounts: [contractAccount],
+        newAddress: {street:data.street, city:data.city, state:data.state, zip:data.zip}
+      },
+      simulationMode: false,
+      description: 'Reprocess of '+contractAccount+' — '+( data.note||'manual fix')
+    };
+    fetch('/api/bulk-jobs/MAILING_ADDRESS_UPDATE', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    }).then(function(r){return r.json();})
+    .then(function(d){ toast('✅ Reprocess job queued: '+(d.batchId||'submitted')); navTo('jobMonitor'); })
+    .catch(function(){ toast('✅ Demo: reprocess queued for '+contractAccount); navTo('jobMonitor'); });
+  } else {
+    toast('✅ Record marked resolved: '+contractAccount);
+    loadFailures();
+  }
+}
+
+// ── Customer Record Search & Edit ─────────────────────────────────────────────
+var DEMO_CUSTOMERS = [
+  {CONTRACT_ACCOUNT:'CA000001', CUSTOMER_ID:'CUST001', FULL_NAME:'James Holloway',    CITY:'Allentown',  STATE_CODE:'PA', ZIP_CODE:'18101', STREET_ADDRESS:'100 Main St',      STATUS:'ACTIVE',   EMAIL:'james.h@example.com'},
+  {CONTRACT_ACCOUNT:'CA000002', CUSTOMER_ID:'CUST002', FULL_NAME:'Maria Santos',      CITY:'Allentown',  STATE_CODE:'PA', ZIP_CODE:'18102', STREET_ADDRESS:'250 Elm Ave',       STATUS:'ACTIVE',   EMAIL:'maria.s@example.com'},
+  {CONTRACT_ACCOUNT:'CA000003', CUSTOMER_ID:'CUST003', FULL_NAME:'Robert Kim',        CITY:'Bethlehem',  STATE_CODE:'PA', ZIP_CODE:'18015', STREET_ADDRESS:'77 Oak Blvd',       STATUS:'ACTIVE',   EMAIL:'rob.k@example.com'},
+  {CONTRACT_ACCOUNT:'CA000004', CUSTOMER_ID:'CUST004', FULL_NAME:'Susan Patel',       CITY:'Easton',     STATE_CODE:'PA', ZIP_CODE:'18042', STREET_ADDRESS:'9 River Rd',        STATUS:'INACTIVE', EMAIL:'susan.p@example.com'},
+  {CONTRACT_ACCOUNT:'CA000005', CUSTOMER_ID:'CUST005', FULL_NAME:'David Chen',        CITY:'Allentown',  STATE_CODE:'PA', ZIP_CODE:'18104', STREET_ADDRESS:'555 Market St',     STATUS:'ACTIVE',   EMAIL:'david.c@example.com'},
+  {CONTRACT_ACCOUNT:'CA-ERR-001', CUSTOMER_ID:'CUST006', FULL_NAME:'Error Account 1', CITY:'Allentown', STATE_CODE:'PA', ZIP_CODE:'180XX', STREET_ADDRESS:'Unknown Street',    STATUS:'ACTIVE',   EMAIL:''},
+  {CONTRACT_ACCOUNT:'CA-ERR-002', CUSTOMER_ID:'CUST007', FULL_NAME:'Error Account 2', CITY:'Allentown', STATE_CODE:'PA', ZIP_CODE:'18101', STREET_ADDRESS:'Timeout Ave',       STATUS:'ACTIVE',   EMAIL:''}
+];
+
+function searchCustomers(mode) {
+  var query = mode === 'all' ? '' : document.getElementById('cust-search').value.trim();
+  var resultsEl = document.getElementById('cust-results');
+  resultsEl.innerHTML = '<div style="color:#6a7988;font-size:13px;padding:12px">Searching...</div>';
+
+  fetch('/api/customers/batch', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({contractAccounts: query ? [query] : [], city: query||undefined})
+  }).then(function(r){return r.json();})
+  .then(function(d){ renderCustomers(d.records||d.value||[], resultsEl); })
+  .catch(function(){
+    // Demo fallback — filter local data
+    var lower = query.toLowerCase();
+    var filtered = mode==='all' ? DEMO_CUSTOMERS : DEMO_CUSTOMERS.filter(function(c){
+      return !query ||
+        c.CONTRACT_ACCOUNT.toLowerCase().includes(lower) ||
+        c.CITY.toLowerCase().includes(lower) ||
+        c.FULL_NAME.toLowerCase().includes(lower);
+    });
+    renderCustomers(filtered, resultsEl);
+    if (mode !== 'all') toast('Showing demo data — backend not reachable');
+  });
+}
+
+function renderCustomers(records, container) {
+  if (!records.length) {
+    container.innerHTML = '<div style="color:#6a7988;font-size:13px;text-align:center;padding:20px">No records found</div>';
+    return;
+  }
+  container.innerHTML =
+    '<div style="font-size:12px;color:#6a7988;margin-bottom:8px">'+records.length+' record(s) found — click ✏️ Edit to update address</div>'+
+    '<div style="overflow-x:auto"><table>'+
+    '<thead><tr><th>Contract Account</th><th>Name</th><th>Street</th><th>City</th><th>State</th><th>ZIP</th><th>Status</th><th>Action</th></tr></thead>'+
+    '<tbody>'+
+    records.map(function(c){
+      return '<tr>'+
+        '<td style="font-family:monospace;font-size:12px">'+c.CONTRACT_ACCOUNT+'</td>'+
+        '<td>'+c.FULL_NAME+'</td>'+
+        '<td style="font-size:12px">'+c.STREET_ADDRESS+'</td>'+
+        '<td>'+c.CITY+'</td>'+
+        '<td>'+c.STATE_CODE+'</td>'+
+        '<td style="font-family:monospace">'+c.ZIP_CODE+'</td>'+
+        '<td><span class="badge '+(c.STATUS==='ACTIVE'?'badge-success':'badge-warning')+'">'+c.STATUS+'</span></td>'+
+        '<td><button class="btn btn-secondary btn-sm" onclick=\'editCustomer('+JSON.stringify(c)+')\'>✏️ Edit</button></td>'+
+        '</tr>';
+    }).join('')+
+    '</tbody></table></div>';
+}
+
+function editCustomer(c) {
+  var body =
+    '<div style="background:#f8f9fa;border-radius:6px;padding:10px;margin-bottom:14px;font-size:13px">'+
+    '<strong>Contract Account:</strong> '+c.CONTRACT_ACCOUNT+' &nbsp;|&nbsp; <strong>Customer:</strong> '+c.FULL_NAME+'</div>'+
+    '<div class="form-row"><label class="form-label">Street Address</label>'+
+    '<input id="edit-street" class="form-control" value="'+c.STREET_ADDRESS+'"/></div>'+
+    '<div class="form-row"><label class="form-label">City</label>'+
+    '<input id="edit-city" class="form-control" value="'+c.CITY+'"/></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+    '<div class="form-row"><label class="form-label">State</label>'+
+    '<input id="edit-state" class="form-control" value="'+c.STATE_CODE+'"/></div>'+
+    '<div class="form-row"><label class="form-label">ZIP Code</label>'+
+    '<input id="edit-zip" class="form-control" value="'+c.ZIP_CODE+'"/></div></div>'+
+    '<div style="background:#e8f0fe;border-radius:6px;padding:10px;font-size:12px;color:#0a6ed1;margin-top:4px">'+
+    '💡 <strong>Quick Save</strong> updates the record immediately. <strong>Queue as Job</strong> sends it through the full bulk processing pipeline with audit trail.</div>';
+
+  openModal('Edit Address — '+c.CONTRACT_ACCOUNT, body, [
+    {label:'Cancel', action:'closeModal()'},
+    {label:'💾 Quick Save', action:'confirmCustomerUpdate("'+c.CONTRACT_ACCOUNT+'","'+c.FULL_NAME+'",false)'},
+    {label:'📋 Queue as Job', primary:true, action:'confirmCustomerUpdate("'+c.CONTRACT_ACCOUNT+'","'+c.FULL_NAME+'",true)'}
+  ]);
+}
+
+function confirmCustomerUpdate(contractAccount, fullName, asJob) {
+  var street = modalVal('edit-street');
+  var city   = modalVal('edit-city');
+  var state  = modalVal('edit-state');
+  var zip    = modalVal('edit-zip');
+
+  var confirmMsg =
+    '<strong>Contract Account:</strong> '+contractAccount+'<br>'+
+    '<strong>Customer:</strong> '+fullName+'<br>'+
+    '<strong>New Street:</strong> '+street+'<br>'+
+    '<strong>New City:</strong> '+city+', '+state+' '+zip+'<br><br>'+
+    '<span style="color:'+(asJob?'#0a6ed1':'#107e3e')+'">'+
+    (asJob
+      ? '📋 This will create a <strong>MAILING_ADDRESS_UPDATE</strong> bulk job — the change goes through the full processing pipeline.'
+      : '💾 This will <strong>immediately update</strong> the address record without creating a job.')+
+    '</span>';
+
+  openModal('Confirm '+(asJob?'Queue as Job':'Quick Save'),
+    '<div style="font-size:13px;line-height:1.9">'+confirmMsg+'</div>',
+    [
+      {label:'Back', action:'closeModal()'},
+      {label:'✅ Confirm', primary:true,
+        action:'executeCustomerUpdate("'+contractAccount+'","'+
+          encodeURIComponent(JSON.stringify({street:street,city:city,state:state,zip:zip}))+'",'+(asJob?'true':'false')+')'
+      }
+    ]
+  );
+}
+
+function executeCustomerUpdate(contractAccount, encodedAddr, asJob) {
+  closeModal();
+  var addr = JSON.parse(decodeURIComponent(encodedAddr));
+
+  if (asJob) {
+    var payload = {
+      jobType: 'MAILING_ADDRESS_UPDATE',
+      parameters: {
+        contractAccounts: [contractAccount],
+        newAddress: {street:addr.street, city:addr.city, state:addr.state, zip:addr.zip}
+      },
+      simulationMode: false,
+      description: 'Address update for '+contractAccount+' via Customer Records screen'
+    };
+    fetch('/api/bulk-jobs/MAILING_ADDRESS_UPDATE', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    }).then(function(r){return r.json();})
+    .then(function(d){ toast('📋 Job queued: '+(d.batchId||'submitted')); navTo('jobMonitor'); })
+    .catch(function(){ toast('📋 Demo: job queued for '+contractAccount); navTo('jobMonitor'); });
+  } else {
+    // Direct PATCH to CAP OData
+    fetch('/odata/v4/BulkJobService/ContractAccounts("'+contractAccount+'")', {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({STREET_ADDRESS:addr.street, CITY:addr.city, STATE_CODE:addr.state, ZIP_CODE:addr.zip})
+    }).then(function(){ toast('✅ Address saved for '+contractAccount); searchCustomers(); })
+    .catch(function(){
+      // Demo: update local cache
+      DEMO_CUSTOMERS.forEach(function(c){
+        if(c.CONTRACT_ACCOUNT===contractAccount){
+          c.STREET_ADDRESS=addr.street; c.CITY=addr.city; c.STATE_CODE=addr.state; c.ZIP_CODE=addr.zip;
+        }
+      });
+      toast('✅ Demo: Address saved for '+contractAccount);
+      searchCustomers();
+    });
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
