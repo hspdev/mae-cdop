@@ -1,0 +1,42 @@
+<mvc:View
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:tnt="sap.tnt"
+  displayBlock="true">
+
+  <tnt:ToolPage id="toolPage">
+    <tnt:header>
+      <tnt:ToolHeader>
+        <tnt:ToolHeaderUtilitySeparator/>
+        <Button
+          icon="sap-icon://menu2"
+          type="Transparent"
+          press=".onSideNavToggle"
+          tooltip="Toggle Navigation"/>
+        <tnt:ToolHeaderUtilitySeparator/>
+        <Title text="MAE Customer Data Operations Platform" titleStyle="H4" wrapping="false"/>
+        <ToolbarSpacer/>
+        <Text text="Demo Utilities Company Inc." class="sapUiTinyMarginEnd"/>
+        <Avatar initials="DC" size="XS"/>
+      </tnt:ToolHeader>
+    </tnt:header>
+
+    <tnt:sideContent>
+      <tnt:SideNavigation id="sideNav" itemSelect=".onNavItemSelect" expanded="true">
+        <tnt:items>
+          <tnt:NavigationListItem text="Dashboard"        icon="sap-icon://home"             key="dashboard"/>
+          <tnt:NavigationListItem text="Copilot"          icon="sap-icon://da"                key="copilot"/>
+          <tnt:NavigationListItem text="Create Job"       icon="sap-icon://add"               key="createJob"/>
+          <tnt:NavigationListItem text="Job Monitor"      icon="sap-icon://task"              key="jobMonitor"/>
+          <tnt:NavigationListItem text="Failure Analysis" icon="sap-icon://alert"             key="failureAnalysis"/>
+          <tnt:NavigationListItem text="Executive Summary" icon="sap-icon://manager-insight"  key="executiveSummary"/>
+          <tnt:NavigationListItem text="Platform Insights" icon="sap-icon://performance"      key="platformInsights"/>
+        </tnt:items>
+      </tnt:SideNavigation>
+    </tnt:sideContent>
+
+    <tnt:mainContents>
+      <NavContainer id="appNav"/>
+    </tnt:mainContents>
+  </tnt:ToolPage>
+</mvc:View>
