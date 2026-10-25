@@ -1,0 +1,25 @@
+PROCEDURE "P_GET_ALLENTOWN_CUSTOMERS"(
+  IN  IV_CITY         NVARCHAR(100),  -- e.g. 'Allentown'
+  IN  IV_DAYS_BACK    INTEGER,        -- e.g. 90
+  OUT OT_RESULT       NCLOB           -- JSON array of contract accounts
+)
+LANGUAGE SQLSCRIPT
+SQL SECURITY INVOKER AS
+BEGIN
+  /**
+   * DUCI Demo Scenario: Find all active customers in a given city
+   * with address changes in the last N days.
+   *
+   * Returns JSON array of contract account numbers suitable for
+   * POST /api/customers/batch payload.
+   */
+
+  SELECT TO_NCLOB(JSON_ARRAYAGG(DISTINCT ca.CONTRACT_ACCOUNT)) INTO OT_RESULT
+  FROM Z_CONTRACT_ACCOUNTS ca
+  INNER JOIN Z_CUSTOMERS c ON ca.CUSTOMER_ID = c.CUSTOMER_ID
+  INNER JOIN Z_ADDRESS_HISTORY ah ON ca.CONTRACT_ACCOUNT = ah.CONTRACT_ACCOUNT
+  WHERE UPPER(c.CITY) = UPPER(:IV_CITY)
+    AND c.STATUS = 'ACTIVE'
+    AND ca.STATUS = 'ACTIVE'
+    AND ah.CHANGE_DATE >= ADD_DAYS(CURRENT_TIMESTAMP, -:IV_DAYS_BACK);
+END;
