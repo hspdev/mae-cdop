@@ -77,58 +77,32 @@ jobs:
       - name: Install MTA plugin
         run: cf install-plugin multiapps -f
 
-      - name: Write CF config and target
+      - name: CF Login via token
         env:
           CF_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
-          mkdir -p "$HOME/.cf"
-          # Write CF config.json with token — using a temp JS file to avoid quoting issues
-          cat > /tmp/write-cf-config.js << 'EOF'
-          const fs = require('fs');
-          const os = require('os');
-          const path = require('path');
-          const cfDir = path.join(os.homedir(), '.cf');
-          fs.mkdirSync(cfDir, { recursive: true });
-          const cfgPath = path.join(cfDir, 'config.json');
-          const cfg = {
-            ConfigVersion: 3,
-            Target: 'https://api.cf.us10.hana.ondemand.com',
-            APIVersion: '3.229.0',
-            AuthorizationEndpoint: 'https://login.cf.us10.hana.ondemand.com',
-            DopplerEndPoint: 'wss://doppler.cf.us10.hana.ondemand.com:443',
-            UaaEndpoint: 'https://uaa.cf.us10.hana.ondemand.com',
-            RoutingAPIEndpoint: 'https://api.cf.us10.hana.ondemand.com/routing',
-            AccessToken: process.env.CF_TOKEN,
-            RefreshToken: '',
-            OrganizationFields: { GUID: '', Name: 'NA_GDH_ai-americasdelivery' },
-            SpaceFields: { GUID: '', Name: 'AIspace' },
-            SSLDisabled: false,
-            AsyncTimeout: 0,
-            ColorEnabled: '',
-            Locale: '',
-            PluginRepos: [{ Name: 'CF-Community', URL: 'https://plugins.cloudfoundry.org' }],
-            MinCLIVersion: '',
-            MinRecommendedCLIVersion: ''
-          };
-          fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
-          const check = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-          console.log('Config written to:', cfgPath);
-          console.log('Target:', check.Target);
-          console.log('Token length:', check.AccessToken.length);
-          EOF
-          node /tmp/write-cf-config.js
-          # CF CLI v7 on Ubuntu with XDG_CONFIG_HOME set uses $XDG_CONFIG_HOME/cf/config.json
-          # Copy config to XDG path as well
-          mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/cf"
-          cp "$HOME/.cf/config.json" "${XDG_CONFIG_HOME:-$HOME/.config}/cf/config.json"
-          echo "Config also written to: ${XDG_CONFIG_HOME:-$HOME/.config}/cf/config.json"
-          # Set the API endpoint — this tells CF CLI where to connect
-          # Then immediately rewrite the token (cf api clears auth)
+          # Step 1: cf api sets the endpoint — this creates/updates the XDG config
           cf api https://api.cf.us10.hana.ondemand.com
-          # Re-inject the token after cf api (which wipes auth fields)
-          node /tmp/write-cf-config.js
-          mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/cf"
-          cp "$HOME/.cf/config.json" "${XDG_CONFIG_HOME:-$HOME/.config}/cf/config.json"
+          # Step 2: inject token directly into the config file cf api just wrote
+          # We know CF CLI uses $XDG_CONFIG_HOME/cf/config.json on this runner
+          node -e "
+            const fs=require('fs'),path=require('path'),os=require('os');
+            const xdg = process.env.XDG_CONFIG_HOME || path.join(os.homedir(),'.config');
+            const xdgCfg = path.join(xdg,'cf','config.json');
+            const homeCfg = path.join(os.homedir(),'.cf','config.json');
+            const tok = process.env.CF_TOKEN;
+            [xdgCfg, homeCfg].forEach(p => {
+              try {
+                fs.mkdirSync(path.dirname(p),{recursive:true});
+                const cfg = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p,'utf8')) : {};
+                cfg.AccessToken = tok;
+                if (!cfg.Target) cfg.Target = 'https://api.cf.us10.hana.ondemand.com';
+                if (!cfg.ConfigVersion) cfg.ConfigVersion = 3;
+                fs.writeFileSync(p, JSON.stringify(cfg,null,2));
+                console.log('Token injected into:', p, '(token_len='+tok.length+')');
+              } catch(e) { console.log('Could not update', p, ':', e.message); }
+            });
+          "
           cf target -o "$CF_ORG" -s "$CF_SPACE"
 
       - name: Deploy MTA
