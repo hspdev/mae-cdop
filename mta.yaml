@@ -17,7 +17,7 @@ build-parameters:
         - cp assets/mae-cap-backend/patches/better-sqlite3-sqljs-shim.js assets/mae-cap-backend/gen/srv/patches/
         - mkdir -p assets/mae-cap-backend/gen/srv/scripts
         - cp assets/mae-cap-backend/scripts/apply-shim.js assets/mae-cap-backend/gen/srv/scripts/
-        - cp assets/mae-cap-backend/scripts/deploy-db.js assets/mae-cap-backend/gen/srv/scripts/
+        - node -e "const fs=require('fs');const p='assets/mae-cap-backend/gen/srv/package.json';const pkg=JSON.parse(fs.readFileSync(p));pkg.scripts=pkg.scripts||{};pkg.scripts.postinstall='node scripts/apply-shim.js';pkg.scripts.start='node node_modules/@sap/cds/bin/cds-serve.js';fs.writeFileSync(p,JSON.stringify(pkg,null,2));console.log('Updated gen/srv/package.json');"
 
 modules:
 
