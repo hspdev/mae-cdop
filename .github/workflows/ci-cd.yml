@@ -122,6 +122,13 @@ jobs:
           mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/cf"
           cp "$HOME/.cf/config.json" "${XDG_CONFIG_HOME:-$HOME/.config}/cf/config.json"
           echo "Config also written to: ${XDG_CONFIG_HOME:-$HOME/.config}/cf/config.json"
+          # Set the API endpoint — this tells CF CLI where to connect
+          # Then immediately rewrite the token (cf api clears auth)
+          cf api https://api.cf.us10.hana.ondemand.com
+          # Re-inject the token after cf api (which wipes auth fields)
+          node /tmp/write-cf-config.js
+          mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/cf"
+          cp "$HOME/.cf/config.json" "${XDG_CONFIG_HOME:-$HOME/.config}/cf/config.json"
           cf target -o "$CF_ORG" -s "$CF_SPACE"
 
       - name: Deploy MTA
