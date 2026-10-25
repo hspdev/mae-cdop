@@ -229,14 +229,36 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
         <div class="panel">
           <div class="panel-header">
             Active &amp; Recent Jobs
-            <span class="spacer" style="flex:1"></span>
+            <span style="flex:1"></span>
             <button class="btn btn-secondary btn-sm" onclick="loadJobs()">🔄 Refresh</button>
           </div>
-          <div class="panel-body" style="padding:0">
+          <div class="panel-body" style="padding:0;overflow-x:auto">
             <table>
-              <thead><tr><th>Batch ID</th><th>Type</th><th>Status</th><th>Progress</th><th>Records</th><th>Created</th></tr></thead>
-              <tbody id="jobs-body"><tr><td colspan="6" style="text-align:center;color:#6a7988;padding:20px">Click Refresh to load jobs</td></tr></tbody>
+              <thead><tr><th>Batch ID</th><th>Type</th><th>Status</th><th>Current Step</th><th>Progress</th><th>Records</th><th>Retries</th><th>Created</th><th>Actions</th></tr></thead>
+              <tbody id="jobs-body"><tr><td colspan="9" style="text-align:center;color:#6a7988;padding:20px">Click Refresh to load jobs</td></tr></tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Job Result Drawer -->
+        <div id="job-result-panel" style="display:none">
+          <div class="panel">
+            <div class="panel-header">
+              📄 Job Results — <span id="result-batch-id" style="font-family:monospace;font-size:12px"></span>
+              <span style="flex:1"></span>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('job-result-panel').style.display='none'">✕ Close</button>
+            </div>
+            <div class="panel-body">
+              <div id="result-summary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:16px"></div>
+              <div id="result-failures-wrap" style="display:none">
+                <div style="font-weight:600;margin-bottom:8px;color:#bb0000">⚠️ Failed Records</div>
+                <table>
+                  <thead><tr><th>Contract Account</th><th>Error Message</th><th>Retries</th><th>Action</th></tr></thead>
+                  <tbody id="result-failures-body"></tbody>
+                </table>
+              </div>
+              <div id="result-no-failures" style="display:none;color:#107e3e;font-weight:600">✅ All records processed successfully — no failures.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -407,20 +429,105 @@ function loadJobs() {
     .catch(function(){renderJobs(DEMO_JOBS); toast('Showing demo data — backend not reachable');});
 }
 
+function stepLabel(s) {
+  var map = {
+    'REQUEST_RECEIVED':'1. Request Received',
+    'VALIDATING_REQUEST':'2. Validating',
+    'LOADING_CONTRACT_ACCOUNTS':'3. Loading Accounts',
+    'PROCESSING_TRANSACTION':'4. Processing',
+    'VERIFYING_UPDATES':'5. Verifying',
+    'GENERATING_RESULTS':'6. Generating Results',
+    'COMPLETED':'7. Completed'
+  };
+  return map[s] || s || '—';
+}
+
 function renderJobs(jobs) {
   renderDashboardJobs(jobs);
   var tbody = document.getElementById('jobs-body');
-  if (!jobs.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:#6a7988;padding:20px">No jobs found</td></tr>'; return; }
+  if (!jobs.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:#6a7988;padding:20px">No jobs found</td></tr>'; return; }
   tbody.innerHTML = jobs.map(function(j){
     var pct = j.TOTAL_ACCOUNTS ? Math.round((j.PROCESSED_ACCOUNTS||j.SUCCESS_COUNT)/j.TOTAL_ACCOUNTS*100) : 0;
+    var canViewResult = ['COMPLETED','PARTIALLY_COMPLETED','FAILED'].indexOf(j.STATUS) !== -1;
     return '<tr>'+
-      '<td style="font-family:monospace;font-size:12px">'+j.BATCH_ID.substring(0,16)+'...</td>'+
-      '<td>'+j.JOB_TYPE.replace(/_/g,' ')+'</td>'+
+      '<td style="font-family:monospace;font-size:11px">'+j.BATCH_ID.substring(0,13)+'...</td>'+
+      '<td style="font-size:12px">'+j.JOB_TYPE.replace(/_/g,' ')+'</td>'+
       '<td>'+statusBadge(j.STATUS)+'</td>'+
-      '<td><div class="progress" style="width:80px"><div class="progress-bar" style="width:'+pct+'%"></div></div><span style="font-size:11px;color:#6a7988;margin-left:6px">'+pct+'%</span></td>'+
-      '<td>'+(j.SUCCESS_COUNT||0)+' / '+(j.TOTAL_ACCOUNTS||0)+'</td>'+
-      '<td>'+timeAgo(j.CREATED_ON)+'</td></tr>';
+      '<td style="font-size:11px;color:#6a7988">'+stepLabel(j.CURRENT_STEP)+'</td>'+
+      '<td><div class="progress" style="width:70px;display:inline-block;vertical-align:middle"><div class="progress-bar" style="width:'+pct+'%"></div></div><span style="font-size:11px;color:#6a7988;margin-left:4px">'+pct+'%</span></td>'+
+      '<td style="font-size:12px">'+(j.SUCCESS_COUNT||0)+' ✅ / '+(j.FAILED_COUNT||0)+' ❌</td>'+
+      '<td style="text-align:center;font-size:12px">'+(j.RETRY_COUNT||0)+' / 3</td>'+
+      '<td style="font-size:11px;color:#6a7988">'+timeAgo(j.CREATED_ON)+'</td>'+
+      '<td>'+
+        (canViewResult ? '<button class="btn btn-secondary btn-sm" onclick="viewResult(\''+j.BATCH_ID+'\')">📄 Results</button> ' : '')+
+        '<button class="btn btn-secondary btn-sm" onclick="checkStatus(\''+j.BATCH_ID+'\')">🔄 Status</button>'+
+      '</td></tr>';
   }).join('');
+}
+
+function checkStatus(batchId) {
+  fetch('/api/bulk-jobs/'+batchId+'/status')
+    .then(function(r){return r.json();})
+    .then(function(d){ toast('Job '+batchId.substring(0,8)+'...: '+d.status+' — Step: '+stepLabel(d.currentStep)); loadJobs(); })
+    .catch(function(){ toast('Status check failed — showing cached data'); });
+}
+
+function viewResult(batchId) {
+  var panel = document.getElementById('job-result-panel');
+  var summaryEl = document.getElementById('result-summary');
+  var failuresEl = document.getElementById('result-failures-body');
+  var failuresWrap = document.getElementById('result-failures-wrap');
+  var noFailures = document.getElementById('result-no-failures');
+  document.getElementById('result-batch-id').textContent = batchId;
+  summaryEl.innerHTML = '<div style="color:#6a7988;font-size:13px">Loading results...</div>';
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior:'smooth'});
+
+  fetch('/api/bulk-jobs/'+batchId+'/result')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      summaryEl.innerHTML = [
+        {label:'Status',    val: d.status||'—'},
+        {label:'Total',     val: (d.totalAccounts||0).toLocaleString()},
+        {label:'Success ✅', val: (d.successCount||0).toLocaleString()},
+        {label:'Failed ❌',  val: (d.failedCount||0).toLocaleString()},
+        {label:'Retries',   val: (d.retryCount||0)+' / 3'},
+        {label:'Rate',      val: d.successRate||'—'},
+        {label:'Duration',  val: d.durationSeconds ? d.durationSeconds+'s' : '—'},
+        {label:'Throughput',val: d.throughputRps ? d.throughputRps+' rec/s' : '—'}
+      ].map(function(m){
+        return '<div style="background:#f8f9fa;padding:14px;border-radius:8px;text-align:center">'+
+          '<div style="font-size:20px;font-weight:700;color:#32363a">'+m.val+'</div>'+
+          '<div style="font-size:11px;color:#6a7988;margin-top:4px">'+m.label+'</div></div>';
+      }).join('');
+
+      var failures = d.failedAccounts || [];
+      if (failures.length) {
+        failuresWrap.style.display = 'block';
+        noFailures.style.display = 'none';
+        failuresEl.innerHTML = failures.map(function(f){
+          return '<tr>'+
+            '<td style="font-family:monospace">'+f.CONTRACT_ACCOUNT+'</td>'+
+            '<td>'+f.ERROR_MESSAGE+'</td>'+
+            '<td style="text-align:center">'+(f.RETRY_ATTEMPT||0)+' / 3</td>'+
+            '<td><button class="btn btn-secondary btn-sm" onclick="toast(\'Reprocess queued for '+f.CONTRACT_ACCOUNT+'\')">↩ Reprocess</button></td></tr>';
+        }).join('');
+      } else {
+        failuresWrap.style.display = 'none';
+        noFailures.style.display = 'block';
+      }
+    })
+    .catch(function(){
+      // Demo fallback
+      summaryEl.innerHTML = '<div style="color:#6a7988;font-size:13px">Demo mode — backend result API not reachable. Showing sample data.</div>';
+      var demoFailures = DEMO_FAILURES.slice(0,2);
+      failuresWrap.style.display = 'block';
+      noFailures.style.display = 'none';
+      failuresEl.innerHTML = demoFailures.map(function(f){
+        return '<tr><td style="font-family:monospace">'+f.CONTRACT_ACCOUNT+'</td><td>'+f.ERROR_MESSAGE+'</td><td style="text-align:center">'+f.RETRY_ATTEMPT+' / 3</td>'+
+          '<td><button class="btn btn-secondary btn-sm" onclick="toast(\'Reprocess queued for '+f.CONTRACT_ACCOUNT+'\')">↩ Reprocess</button></td></tr>';
+      }).join('');
+    });
 }
 
 // ── Failure Analysis ──────────────────────────────────────────────────────────
