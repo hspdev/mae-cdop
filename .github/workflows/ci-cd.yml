@@ -102,8 +102,34 @@ jobs:
         env:
           CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
-          # CF CLI reads CF_ACCESS_TOKEN env var natively for token-based auth
-          cf api https://api.cf.us10.hana.ondemand.com
+          # Write CF CLI config.json — exact format CF CLI v8 expects
+          mkdir -p "$HOME/.cf"
+          node -e "
+          const fs=require('fs'),p=require('path').join(process.env.HOME,'.cf','config.json');
+          const tok=process.env.CF_ACCESS_TOKEN;
+          const cfg={
+            'ConfigVersion':3,
+            'Target':'https://api.cf.us10.hana.ondemand.com',
+            'APIVersion':'3.229.0',
+            'AuthorizationEndpoint':'https://login.cf.us10.hana.ondemand.com',
+            'DopplerEndPoint':'wss://doppler.cf.us10.hana.ondemand.com:443',
+            'UaaEndpoint':'https://uaa.cf.us10.hana.ondemand.com',
+            'RoutingAPIEndpoint':'https://api.cf.us10.hana.ondemand.com/routing',
+            'AccessToken':tok,
+            'RefreshToken':'',
+            'OrganizationFields':{'GUID':'','Name':'NA_GDH_ai-americasdelivery','QuotaDefinition':{'GUID':'','Name':'','MemoryLimit':0,'InstanceMemoryLimit':0,'RoutesLimit':0,'ServicesLimit':0,'NonBasicServicesAllowed':false}},
+            'SpaceFields':{'GUID':'','Name':'AIspace','AllowSSH':false},
+            'SSLDisabled':false,'AsyncTimeout':0,'ColorEnabled':'','Locale':'',
+            'PluginRepos':[{'Name':'CF-Community','URL':'https://plugins.cloudfoundry.org'}],
+            'MinCLIVersion':'','MinRecommendedCLIVersion':''
+          };
+          fs.writeFileSync(p,JSON.stringify(cfg));
+          console.log('Config written, token len='+tok.length);
+          "
+          # Verify CF CLI reads it correctly
+          cf version
+          cf target 2>&1 || true
+          # Try targeting org/space
           cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
 
       - name: Deploy MTA
