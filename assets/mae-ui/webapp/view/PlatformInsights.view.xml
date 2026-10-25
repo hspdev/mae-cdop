@@ -1,0 +1,90 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.PlatformInsights"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:l="sap.ui.layout"
+  displayBlock="true">
+
+  <Page title="Platform Insights" showNavButton="false">
+    <customHeader>
+      <Bar>
+        <contentLeft><Title text="Platform Performance Insights" level="H3"/></contentLeft>
+        <contentRight>
+          <Select id="batchSizeFilter" change=".onBatchSizeChange">
+            <items>
+              <core:Item xmlns:core="sap.ui.core" key="ALL" text="All Batch Sizes"/>
+              <core:Item xmlns:core="sap.ui.core" key="10000"  text="10K Records"/>
+              <core:Item xmlns:core="sap.ui.core" key="50000"  text="50K Records"/>
+              <core:Item xmlns:core="sap.ui.core" key="100000" text="100K Records"/>
+            </items>
+          </Select>
+          <Button text="Run Benchmark" type="Emphasized" icon="sap-icon://performance" press=".onRunBenchmark"/>
+        </contentRight>
+      </Bar>
+    </customHeader>
+
+    <content>
+      <VBox class="sapUiSmallMargin">
+
+        <!-- Performance Benchmarks -->
+        <Panel headerText="Performance Benchmarks" expandable="true" expanded="true">
+          <l:Grid defaultSpan="XL4 L4 M6 S12">
+            <GenericTile header="10K Records" subheader="Throughput">
+              <TileContent unit="rec/sec">
+                <NumericContent value="{insights>/benchmark/10k/throughput}" valueColor="Good"/>
+              </TileContent>
+            </GenericTile>
+            <GenericTile header="50K Records" subheader="Throughput">
+              <TileContent unit="rec/sec">
+                <NumericContent value="{insights>/benchmark/50k/throughput}" valueColor="Good"/>
+              </TileContent>
+            </GenericTile>
+            <GenericTile header="100K Records" subheader="Throughput">
+              <TileContent unit="rec/sec">
+                <NumericContent value="{insights>/benchmark/100k/throughput}" valueColor="Good"/>
+              </TileContent>
+            </GenericTile>
+          </l:Grid>
+        </Panel>
+
+        <!-- Runtime Statistics -->
+        <Panel headerText="Runtime Statistics" expandable="true" expanded="true" class="sapUiSmallMarginTop">
+          <Table
+            id="metricsTable"
+            items="{path: '/PerformanceMetrics', sorter: {path: 'RECORDED_AT', descending: true}}"
+            growing="true"
+            growingThreshold="20">
+            <columns>
+              <Column><Label text="Batch ID"/></Column>
+              <Column><Label text="Metric Type"/></Column>
+              <Column hAlign="End"><Label text="Value"/></Column>
+              <Column><Label text="Unit"/></Column>
+              <Column hAlign="End"><Label text="Record Count"/></Column>
+              <Column><Label text="Recorded At"/></Column>
+            </columns>
+            <items>
+              <ColumnListItem>
+                <Text text="{BATCH_ID}" wrapping="false"/>
+                <Text text="{METRIC_TYPE}"/>
+                <ObjectNumber number="{METRIC_VALUE}"/>
+                <Text text="{UNIT}"/>
+                <Text text="{RECORD_COUNT}"/>
+                <Text text="{RECORDED_AT}"/>
+              </ColumnListItem>
+            </items>
+          </Table>
+        </Panel>
+
+        <!-- Simulation vs Real Mode Info -->
+        <Panel headerText="Execution Modes" expandable="true" expanded="false" class="sapUiSmallMarginTop">
+          <VBox class="sapUiSmallMargin">
+            <Title text="Simulation Mode" level="H5"/>
+            <Text text="Processes all framework steps (validate → load → process → verify → results) without committing any database writes. Ideal for testing job parameters, estimating performance, and UAT validation."/>
+            <Title text="Real Execution Mode" level="H5" class="sapUiSmallMarginTop"/>
+            <Text text="Full production execution with HANA writes. Uses set-based HANA SQL for all batch operations. Supports 10K, 50K, and 100K record batches with exponential backoff retry on failures."/>
+          </VBox>
+        </Panel>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>
