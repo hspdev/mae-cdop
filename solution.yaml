@@ -1,0 +1,11 @@
+apiVersion: solution.sap/v1
+kind: Solution
+
+metadata:
+  name: mae-cdop-a79cd
+  version: 1.0.0
+  description: MAE Autonomous Customer Data Operations Platform for Demo Utilities Company Inc. (DUCI) — reusable bulk job processing framework supporting mailing address updates, contract account updates, customer preference updates, and notification requests at 100K-record scale with AI-powered Operations Copilot.
+
+assets:
+  - ref: ./assets/mae-cap-backend/asset.yaml
+  - ref: ./assets/mae-ui/asset.yaml
