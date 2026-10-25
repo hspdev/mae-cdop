@@ -110,7 +110,6 @@ jobs:
             fs.writeFileSync(p,JSON.stringify(cfg,null,2));
             console.log('CF config written to',p,'token length:',cfg.AccessToken.length);
           "
-          cf api https://api.cf.us10.hana.ondemand.com
           cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
 
       - name: Deploy MTA
