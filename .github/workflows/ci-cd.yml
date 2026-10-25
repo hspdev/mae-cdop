@@ -131,6 +131,16 @@ jobs:
           echo "Deploying: $MTAR"
           cf deploy "$MTAR" -f --retries 2
 
+      - name: Check app status and logs
+        if: always()
+        run: |
+          echo "=== App Status ==="
+          cf apps || true
+          echo "=== mae-cap-backend logs ==="
+          cf logs mae-cap-backend --recent 2>&1 | tail -50 || true
+          echo "=== mae-ui-approuter logs ==="
+          cf logs mae-ui-approuter --recent 2>&1 | tail -20 || true
+
       - name: Smoke test
         run: |
           sleep 30
