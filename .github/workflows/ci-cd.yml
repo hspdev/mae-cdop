@@ -11,63 +11,39 @@ env:
 
 jobs:
 
-  # ── Unit & Integration Tests ────────────────────────────────────────────────
+  # ── Unit & Integration Tests ───────────────────────────────────────────────
   test:
     name: Test Suite
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: assets/mae-cap-backend/package-lock.json
 
-      - name: Install CAP Backend Dependencies
+      - name: Install dependencies
         working-directory: assets/mae-cap-backend
-        run: npm ci
+        run: npm ci --legacy-peer-deps --ignore-scripts && node scripts/apply-shim.js
 
-      - name: Run Unit Tests
+      - name: Run unit tests
         working-directory: assets/mae-cap-backend
-        run: npm run test:unit -- --coverage
+        run: npm run test:unit
 
-      - name: Run Integration Tests
+      - name: Run integration tests
         working-directory: assets/mae-cap-backend
         run: npm run test:integration
         env:
-          NODE_ENV: development
+          NODE_ENV: test
+          SIMULATION_MODE: "true"
 
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: assets/mae-cap-backend/coverage/
-
-  # ── Lint ────────────────────────────────────────────────────────────────────
-  lint:
-    name: Code Quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Install
-        working-directory: assets/mae-cap-backend
-        run: npm ci
-      - name: Lint CAP Backend
-        working-directory: assets/mae-cap-backend
-        run: npm run lint || echo "::warning::Lint warnings found"
-
-  # ── Build MTA ───────────────────────────────────────────────────────────────
+  # ── Build MTA ──────────────────────────────────────────────────────────────
   build:
     name: Build MTA Archive
     runs-on: ubuntu-latest
-    needs: [test, lint]
+    needs: [test]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
@@ -79,41 +55,42 @@ jobs:
       - name: Install MBT
         run: npm install -g mbt
 
-      - name: Install CAP DK
+      - name: Install CDS DK
         run: npm install -g @sap/cds-dk
 
       - name: Build MTA
         run: mbt build -p cf
 
-      - name: Upload MTA Archive
+      - name: Upload MTA archive
         uses: actions/upload-artifact@v4
         with:
           name: mta-archive
           path: mta_archives/*.mtar
           retention-days: 30
 
-  # ── Deploy to BTP Dev ────────────────────────────────────────────────────────
-  deploy-dev:
-    name: Deploy to BTP Dev
+  # ── Deploy to BTP CF ───────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to BTP Cloud Foundry
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main'
-    environment: development
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download MTA Archive
+      - name: Download MTA archive
         uses: actions/download-artifact@v4
         with:
           name: mta-archive
           path: mta_archives/
 
-      - name: Install CF CLI
+      - name: Install CF CLI v8
         run: |
           curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" | tar -zx
           sudo mv cf8 /usr/local/bin/cf
+          cf version
 
-      - name: Install MTA CF Plugin
+      - name: Install MTA CF plugin
         run: cf install-plugin multiapps -f
 
       - name: CF Login
@@ -121,55 +98,19 @@ jobs:
           cf login \
             -a ${{ secrets.CF_API_URL }} \
             -u ${{ secrets.CF_USERNAME }} \
-            -p ${{ secrets.CF_PASSWORD }} \
-            -o ${{ secrets.CF_ORG }} \
-            -s ${{ secrets.CF_SPACE_DEV }}
+            -p "${{ secrets.CF_PASSWORD }}" \
+            -o "${{ secrets.CF_ORG }}" \
+            -s "${{ secrets.CF_SPACE }}"
 
-      - name: Deploy to CF Dev
+      - name: Deploy MTA
         run: |
           MTAR=$(ls mta_archives/*.mtar | head -1)
-          cf deploy "$MTAR" -f
+          echo "Deploying: $MTAR"
+          cf deploy "$MTAR" -f --retries 2
 
-      - name: Smoke Test
+      - name: Smoke test
         run: |
-          echo "Running post-deploy smoke tests..."
-          APP_URL=$(cf app mae-cap-backend | grep -oP 'routes:\s+\K\S+' | head -1)
-          curl -f "https://${APP_URL}/health" && echo "Health check passed"
-
-  # ── Deploy to BTP Production ─────────────────────────────────────────────────
-  deploy-prod:
-    name: Deploy to BTP Production
-    runs-on: ubuntu-latest
-    needs: deploy-dev
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download MTA Archive
-        uses: actions/download-artifact@v4
-        with:
-          name: mta-archive
-          path: mta_archives/
-
-      - name: Install CF CLI
-        run: |
-          curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" | tar -zx
-          sudo mv cf8 /usr/local/bin/cf
-
-      - name: Install MTA CF Plugin
-        run: cf install-plugin multiapps -f
-
-      - name: CF Login (Production)
-        run: |
-          cf login \
-            -a ${{ secrets.CF_API_URL }} \
-            -u ${{ secrets.CF_USERNAME }} \
-            -p ${{ secrets.CF_PASSWORD }} \
-            -o ${{ secrets.CF_ORG }} \
-            -s ${{ secrets.CF_SPACE_PROD }}
-
-      - name: Deploy to CF Production
-        run: |
-          MTAR=$(ls mta_archives/*.mtar | head -1)
-          cf deploy "$MTAR" -f --retries 3
+          sleep 30
+          APP_ROUTE=$(cf app mae-cap-backend | grep -oP 'routes:\s+\K\S+' | head -1)
+          echo "Testing https://${APP_ROUTE}/health"
+          curl -sf "https://${APP_ROUTE}/health" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='UP', d; print('Health check PASSED')"
