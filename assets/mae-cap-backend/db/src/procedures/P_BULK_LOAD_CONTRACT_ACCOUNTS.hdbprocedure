@@ -1,0 +1,51 @@
+PROCEDURE "P_BULK_LOAD_CONTRACT_ACCOUNTS"(
+  IN   IT_CONTRACT_ACCOUNTS NCLOB,   -- JSON array of contract account numbers
+  OUT  OT_RESULT            NCLOB    -- JSON array of matched customer+account records
+)
+LANGUAGE SQLSCRIPT
+SQL SECURITY INVOKER AS
+BEGIN
+  /**
+   * Set-based retrieval for bulk contract account loading.
+   * Avoids large OData OR filters — uses HANA JSON table function.
+   *
+   * Input:  JSON array ["CA100001","CA100002",...]
+   * Output: JSON array of full customer+account records
+   */
+
+  DECLARE lv_sql NVARCHAR(5000);
+
+  -- Parse JSON array into temp table
+  CREATE LOCAL TEMPORARY TABLE #TMP_INPUT AS (
+    SELECT TRIM(ACCOUNT_NUMBER) AS CONTRACT_ACCOUNT
+    FROM JSON_TABLE(
+      :IT_CONTRACT_ACCOUNTS,
+      '$[*]' COLUMNS (ACCOUNT_NUMBER NVARCHAR(20) PATH '$')
+    )
+  );
+
+  -- Set-based join — single SQL statement, no row-by-row processing
+  SELECT TO_NCLOB(JSON_ARRAYAGG(
+    JSON_OBJECT(
+      'contractAccount'  VALUE ca.CONTRACT_ACCOUNT,
+      'customerId'       VALUE ca.CUSTOMER_ID,
+      'accountType'      VALUE ca.ACCOUNT_TYPE,
+      'status'           VALUE ca.STATUS,
+      'streetAddress'    VALUE ca.STREET_ADDRESS,
+      'city'             VALUE ca.CITY,
+      'stateCode'        VALUE ca.STATE_CODE,
+      'zipCode'          VALUE ca.ZIP_CODE,
+      'customerName'     VALUE c.FULL_NAME,
+      'email'            VALUE c.EMAIL,
+      'phone'            VALUE c.PHONE,
+      'segment'          VALUE c.CUSTOMER_SEGMENT,
+      'notificationOptIn' VALUE c.NOTIFICATION_OPT_IN
+    )
+  )) INTO OT_RESULT
+  FROM Z_CONTRACT_ACCOUNTS ca
+  INNER JOIN #TMP_INPUT t ON ca.CONTRACT_ACCOUNT = t.CONTRACT_ACCOUNT
+  INNER JOIN Z_CUSTOMERS c ON ca.CUSTOMER_ID = c.CUSTOMER_ID
+  WHERE ca.STATUS = 'ACTIVE';
+
+  DROP TABLE #TMP_INPUT;
+END;
