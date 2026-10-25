@@ -1,0 +1,91 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.FailureAnalysis"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:t="sap.ui.table"
+  displayBlock="true">
+
+  <Page title="Failure Analysis" showNavButton="true" navButtonPress=".onNavBack">
+    <customHeader>
+      <Bar>
+        <contentLeft>
+          <Title text="Failure Analysis" level="H3"/>
+        </contentLeft>
+        <contentRight>
+          <Button text="Reprocess Failed" type="Emphasized" icon="sap-icon://refresh" press=".onReprocessFailed"/>
+          <Button text="Export" icon="sap-icon://download" press=".onExport"/>
+          <Button text="Ask Copilot" icon="sap-icon://da" press=".onAskCopilot"/>
+        </contentRight>
+      </Bar>
+    </customHeader>
+
+    <content>
+      <VBox class="sapUiSmallMargin">
+        <!-- Job Summary Header -->
+        <Panel id="jobSummaryPanel" headerText="Job Summary" expandable="true" expanded="true">
+          <HBox wrap="Wrap" class="sapUiSmallMargin">
+            <ObjectNumber number="{failure>/job/TOTAL_ACCOUNTS}"  unit="Total"   emphasized="true" class="sapUiMediumMarginEnd"/>
+            <ObjectNumber number="{failure>/job/SUCCESS_COUNT}"   unit="Success" state="Success"   class="sapUiMediumMarginEnd"/>
+            <ObjectNumber number="{failure>/job/FAILED_COUNT}"    unit="Failed"  state="Error"     class="sapUiMediumMarginEnd"/>
+            <ObjectNumber number="{failure>/successRate}"         unit="% Success Rate"            class="sapUiMediumMarginEnd"/>
+          </HBox>
+        </Panel>
+
+        <!-- Error Pattern Summary -->
+        <Panel headerText="Error Pattern Analysis" expandable="true" expanded="true" class="sapUiSmallMarginTop">
+          <List
+            id="errorPatternList"
+            items="{failure>/errorPatterns}"
+            noDataText="No errors to analyze">
+            <ObjectListItem
+              title="{failure>/errorPatterns/errorCode}"
+              number="{failure>/errorPatterns/count}"
+              numberUnit="occurrences">
+              <attributes>
+                <ObjectAttribute title="Sample Error" text="{failure>/errorPatterns/sample}"/>
+              </attributes>
+            </ObjectListItem>
+          </List>
+        </Panel>
+
+        <!-- Failed Records Table -->
+        <Panel headerText="Failed Records" expandable="true" expanded="true" class="sapUiSmallMarginTop">
+          <Toolbar>
+            <SearchField placeholder="Search contract account..." liveChange=".onSearchFailures" width="20rem"/>
+            <ToolbarSpacer/>
+            <Text text="{failure>/totalFailures} failed records"/>
+          </Toolbar>
+          <t:Table
+            id="failuresTable"
+            rows="{path: '/BatchJobFailureLogs', filters: [{path: 'BATCH_ID', operator: 'EQ', value1: '{failure>/batchId}'}]}"
+            visibleRowCount="15"
+            alternateRowColors="true"
+            enableBusyIndicator="true">
+            <t:columns>
+              <t:Column width="12rem" label="Contract Account">
+                <Text text="{CONTRACT_ACCOUNT}"/>
+              </t:Column>
+              <t:Column width="8rem" label="Error Code">
+                <ObjectStatus
+                  text="{ERROR_CODE}"
+                  state="Error"/>
+              </t:Column>
+              <t:Column label="Error Message">
+                <Text text="{ERROR_MESSAGE}" wrapping="false"/>
+              </t:Column>
+              <t:Column width="6rem" label="Retry Attempt" hAlign="Center">
+                <Text text="{RETRY_ATTEMPT}"/>
+              </t:Column>
+              <t:Column width="8rem" label="Timestamp">
+                <Text text="{CREATED_ON}"/>
+              </t:Column>
+              <t:Column width="6rem" label="Resolved" hAlign="Center">
+                <CheckBox selected="{RESOLVED}" enabled="false"/>
+              </t:Column>
+            </t:columns>
+          </t:Table>
+        </Panel>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>
