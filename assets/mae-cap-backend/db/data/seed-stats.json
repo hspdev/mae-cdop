@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-10-24T04:23:45.649Z",
+  "scenario": "demo",
+  "customers": 1000,
+  "contractAccounts": 1250,
+  "addressHistoryRecs": 10,
+  "preferences": 6004,
+  "failureScenarios": 50,
+  "allentownCustomers": 73,
+  "activeCustomers": 926,
+  "allentown90DayChanges": 10,
+  "allentownDemoAccounts": 77
+}
