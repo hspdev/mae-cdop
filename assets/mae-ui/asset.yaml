@@ -1,0 +1,8 @@
+apiVersion: asset.sap/v1
+kind: Asset
+
+metadata:
+  name: mae-ui
+  version: 1.0.0
+
+type: base-ui
