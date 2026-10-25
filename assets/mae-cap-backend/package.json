@@ -6,7 +6,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node scripts/deploy-db.js && node node_modules/@sap/cds/bin/cds-serve.js",
+    "start": "node node_modules/@sap/cds/bin/cds-serve.js",
     "start:local": "cds watch",
     "build": "cds build --production",
     "postinstall": "node scripts/apply-shim.js",
@@ -62,7 +62,7 @@
       "db": {
         "kind": "sqlite",
         "credentials": {
-          "url": "mae-cdop.db"
+          "url": ":memory:"
         }
       },
       "auth": {
