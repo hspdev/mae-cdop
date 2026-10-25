@@ -98,14 +98,37 @@ jobs:
       - name: Install MTA CF plugin
         run: cf install-plugin multiapps -f
 
-      - name: CF Login
+      - name: CF Authenticate via token
         run: |
-          cf login \
-            -a "${{ env.CF_API_URL }}" \
-            -u "${{ env.CF_USERNAME }}" \
-            -p "${{ secrets.CF_PASSWORD }}" \
-            -o "${{ env.CF_ORG }}" \
-            -s "${{ env.CF_SPACE }}"
+          cf api "${{ env.CF_API_URL }}"
+          # Use oauth-token directly — avoids SSO/password issues
+          CF_HOME=$(mktemp -d)
+          export CF_HOME
+          mkdir -p "$CF_HOME/.cf"
+          cat > "$CF_HOME/.cf/config.json" <<EOF
+          {
+            "ConfigVersion": 3,
+            "Target": "${{ env.CF_API_URL }}",
+            "APIVersion": "3.229.0",
+            "AuthorizationEndpoint": "https://login.cf.us10.hana.ondemand.com",
+            "DopplerEndPoint": "wss://doppler.cf.us10.hana.ondemand.com:443",
+            "UaaEndpoint": "https://uaa.cf.us10.hana.ondemand.com",
+            "RoutingAPIEndpoint": "https://api.cf.us10.hana.ondemand.com/routing",
+            "AccessToken": "${{ secrets.CF_ACCESS_TOKEN }}",
+            "RefreshToken": "",
+            "OrganizationFields": { "GUID": "", "Name": "${{ env.CF_ORG }}" },
+            "SpaceFields": { "GUID": "", "Name": "${{ env.CF_SPACE }}" },
+            "SSLDisabled": false,
+            "AsyncTimeout": 0,
+            "ColorEnabled": "",
+            "Locale": "",
+            "PluginRepos": [{"Name": "CF-Community","URL": "https://plugins.cloudfoundry.org"}],
+            "MinCLIVersion": "",
+            "MinRecommendedCLIVersion": ""
+          }
+          EOF
+          echo "CF_HOME=$CF_HOME" >> $GITHUB_ENV
+          cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
 
       - name: Deploy MTA
         run: |
