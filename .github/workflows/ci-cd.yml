@@ -102,43 +102,14 @@ jobs:
         env:
           CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
-          # CF CLI v8 uses $CF_HOME/.cf/config.json (defaults to $HOME)
-          export CF_HOME="$HOME"
-          mkdir -p "$CF_HOME/.cf"
-          python3 - <<PYEOF
-import json, os
-cfg = {
-  "ConfigVersion": 3,
-  "Target": "https://api.cf.us10.hana.ondemand.com",
-  "APIVersion": "3.229.0",
-  "AuthorizationEndpoint": "https://login.cf.us10.hana.ondemand.com",
-  "DopplerEndPoint": "wss://doppler.cf.us10.hana.ondemand.com:443",
-  "UaaEndpoint": "https://uaa.cf.us10.hana.ondemand.com",
-  "RoutingAPIEndpoint": "https://api.cf.us10.hana.ondemand.com/routing",
-  "AccessToken": os.environ["CF_ACCESS_TOKEN"],
-  "RefreshToken": "",
-  "OrganizationFields": {"GUID": "", "Name": "NA_GDH_ai-americasdelivery"},
-  "SpaceFields": {"GUID": "", "Name": "AIspace"},
-  "SSLDisabled": False,
-  "AsyncTimeout": 0,
-  "ColorEnabled": "",
-  "Locale": "",
-  "PluginRepos": [{"Name": "CF-Community", "URL": "https://plugins.cloudfoundry.org"}],
-  "MinCLIVersion": "",
-  "MinRecommendedCLIVersion": ""
-}
-home = os.environ.get("CF_HOME", os.environ["HOME"])
-path = os.path.join(home, ".cf", "config.json")
-with open(path, "w") as f:
-    json.dump(cfg, f, indent=2)
-print("Written:", path)
-print("Target:", cfg["Target"])
-print("Token starts:", cfg["AccessToken"][:30])
-PYEOF
-          echo "CF_HOME=$CF_HOME" >> $GITHUB_ENV
-          # Verify config was written
-          cat "$CF_HOME/.cf/config.json" | python3 -c "import json,sys; c=json.load(sys.stdin); print('Target:', c['Target']); print('Token OK:', len(c['AccessToken'])>10)"
-          # Set API and target
+          mkdir -p "$HOME/.cf"
+          node -e "
+            const fs=require('fs'),path=require('path');
+            const cfg={ConfigVersion:3,Target:'https://api.cf.us10.hana.ondemand.com',APIVersion:'3.229.0',AuthorizationEndpoint:'https://login.cf.us10.hana.ondemand.com',DopplerEndPoint:'wss://doppler.cf.us10.hana.ondemand.com:443',UaaEndpoint:'https://uaa.cf.us10.hana.ondemand.com',RoutingAPIEndpoint:'https://api.cf.us10.hana.ondemand.com/routing',AccessToken:process.env.CF_ACCESS_TOKEN,RefreshToken:'',OrganizationFields:{GUID:'',Name:'NA_GDH_ai-americasdelivery'},SpaceFields:{GUID:'',Name:'AIspace'},SSLDisabled:false,AsyncTimeout:0,ColorEnabled:'',Locale:'',PluginRepos:[{Name:'CF-Community',URL:'https://plugins.cloudfoundry.org'}],MinCLIVersion:'',MinRecommendedCLIVersion:''};
+            const p=path.join(process.env.HOME,'.cf','config.json');
+            fs.writeFileSync(p,JSON.stringify(cfg,null,2));
+            console.log('CF config written to',p,'token length:',cfg.AccessToken.length);
+          "
           cf api https://api.cf.us10.hana.ondemand.com
           cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
 
