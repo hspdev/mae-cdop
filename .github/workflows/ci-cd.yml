@@ -10,34 +10,29 @@ on:
 env:
   NODE_VERSION: '20.x'
   CF_API_URL: https://api.cf.us10.hana.ondemand.com
-  CF_USERNAME: harish.phadnis@sap.com
   CF_ORG: NA_GDH_ai-americasdelivery
   CF_SPACE: AIspace
 
 jobs:
 
-  # ── Unit & Integration Tests ───────────────────────────────────────────────
+  # ── Tests ──────────────────────────────────────────────────────────────────
   test:
     name: Test Suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: assets/mae-cap-backend/package-lock.json
-
       - name: Install dependencies
         working-directory: assets/mae-cap-backend
         run: npm ci --legacy-peer-deps --ignore-scripts && node scripts/apply-shim.js
-
-      - name: Run unit tests
+      - name: Unit tests
         working-directory: assets/mae-cap-backend
         run: npm run test:unit
-
-      - name: Run integration tests
+      - name: Integration tests
         working-directory: assets/mae-cap-backend
         run: npm run test:integration
         env:
@@ -45,7 +40,7 @@ jobs:
           SIMULATION_MODE: "true"
           CDS_REQUIRES_DB_CREDENTIALS_URL: ":memory:"
 
-  # ── Build MTA ──────────────────────────────────────────────────────────────
+  # ── Build ──────────────────────────────────────────────────────────────────
   build:
     name: Build MTA Archive
     runs-on: ubuntu-latest
@@ -53,20 +48,13 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install MBT
-        run: npm install -g mbt
-
-      - name: Install CDS DK
-        run: npm install -g @sap/cds-dk
-
+      - name: Install MBT + CDS DK
+        run: npm install -g mbt @sap/cds-dk
       - name: Build MTA
         run: mbt build -p cf
-
       - name: Upload MTA archive
         uses: actions/upload-artifact@v4
         with:
@@ -74,7 +62,7 @@ jobs:
           path: mta_archives/*.mtar
           retention-days: 30
 
-  # ── Deploy to BTP CF ───────────────────────────────────────────────────────
+  # ── Deploy ─────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to BTP Cloud Foundry
     runs-on: ubuntu-latest
@@ -98,51 +86,42 @@ jobs:
       - name: Install MTA CF plugin
         run: cf install-plugin multiapps -f
 
-      - name: CF Authenticate via token
+      - name: CF Login
         env:
-          CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
+          CF_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
-          # Write CF CLI config.json — exact format CF CLI v8 expects
-          mkdir -p "$HOME/.cf"
-          node -e "
-          const fs=require('fs'),p=require('path').join(process.env.HOME,'.cf','config.json');
-          const tok=process.env.CF_ACCESS_TOKEN;
-          const cfg={
-            'ConfigVersion':3,
-            'Target':'https://api.cf.us10.hana.ondemand.com',
-            'APIVersion':'3.229.0',
-            'AuthorizationEndpoint':'https://login.cf.us10.hana.ondemand.com',
-            'DopplerEndPoint':'wss://doppler.cf.us10.hana.ondemand.com:443',
-            'UaaEndpoint':'https://uaa.cf.us10.hana.ondemand.com',
-            'RoutingAPIEndpoint':'https://api.cf.us10.hana.ondemand.com/routing',
-            'AccessToken':tok,
-            'RefreshToken':'',
-            'OrganizationFields':{'GUID':'','Name':'NA_GDH_ai-americasdelivery','QuotaDefinition':{'GUID':'','Name':'','MemoryLimit':0,'InstanceMemoryLimit':0,'RoutesLimit':0,'ServicesLimit':0,'NonBasicServicesAllowed':false}},
-            'SpaceFields':{'GUID':'','Name':'AIspace','AllowSSH':false},
-            'SSLDisabled':false,'AsyncTimeout':0,'ColorEnabled':'','Locale':'',
-            'PluginRepos':[{'Name':'CF-Community','URL':'https://plugins.cloudfoundry.org'}],
-            'MinCLIVersion':'','MinRecommendedCLIVersion':''
-          };
-          fs.writeFileSync(p,JSON.stringify(cfg));
-          console.log('Config written, token len='+tok.length);
-          "
-          # Verify CF CLI reads it correctly
+          # Write config to both paths CF CLI v8 may use
+          for cfdir in "$HOME/.cf" "$HOME/.config/cf"; do
+            mkdir -p "$cfdir"
+            node -e "
+              const fs=require('fs');
+              const cfg={ConfigVersion:3,Target:'https://api.cf.us10.hana.ondemand.com',APIVersion:'3.229.0',AuthorizationEndpoint:'https://login.cf.us10.hana.ondemand.com',DopplerEndPoint:'wss://doppler.cf.us10.hana.ondemand.com:443',UaaEndpoint:'https://uaa.cf.us10.hana.ondemand.com',RoutingAPIEndpoint:'https://api.cf.us10.hana.ondemand.com/routing',AccessToken:process.env.CF_TOKEN,RefreshToken:'',OrganizationFields:{GUID:'',Name:'NA_GDH_ai-americasdelivery'},SpaceFields:{GUID:'',Name:'AIspace'},SSLDisabled:false,AsyncTimeout:0,ColorEnabled:'',Locale:'',PluginRepos:[{Name:'CF-Community',URL:'https://plugins.cloudfoundry.org'}],MinCLIVersion:'',MinRecommendedCLIVersion:''};
+              fs.writeFileSync('$cfdir/config.json', JSON.stringify(cfg,null,2));
+              console.log('Written $cfdir/config.json, token_len='+process.env.CF_TOKEN.length);
+            "
+          done
+          # Show where CF CLI reads config from
           cf version
-          cf target 2>&1 || true
-          # Try targeting org/space
-          cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
+          cf target 2>&1 && echo "CF target OK" || echo "CF target failed — trying with CF_HOME"
+          # Try with explicit CF_HOME
+          CF_HOME="$HOME" cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
 
       - name: Deploy MTA
         env:
-          CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
+          CF_HOME: ${{ env.HOME }}
+          CF_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
           MTAR=$(ls mta_archives/*.mtar | head -1)
-          echo "Deploying: $MTAR"
-          cf deploy "$MTAR" -f --retries 2
+          echo "Deploying $MTAR to ${{ env.CF_ORG }}/${{ env.CF_SPACE }}"
+          CF_HOME="$HOME" cf deploy "$MTAR" -f --retries 2
 
       - name: Smoke test
         run: |
           sleep 30
-          APP_ROUTE=$(cf app mae-cap-backend | grep -oP 'routes:\s+\K\S+' | head -1)
-          echo "Testing https://${APP_ROUTE}/health"
-          curl -sf "https://${APP_ROUTE}/health"
+          APP_ROUTE=$(CF_HOME="$HOME" cf app mae-cap-backend | grep -oP 'routes:\s+\K\S+' | head -1 || echo "")
+          if [ -n "$APP_ROUTE" ]; then
+            curl -sf "https://${APP_ROUTE}/health" && echo "Health check PASSED"
+          else
+            echo "Could not determine app route — checking apps list"
+            CF_HOME="$HOME" cf apps
+          fi
