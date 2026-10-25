@@ -1,0 +1,115 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.Copilot"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:l="sap.ui.layout"
+  displayBlock="true">
+
+  <Page title="DUCI Operations Copilot" showNavButton="false" backgroundDesign="List">
+    <customHeader>
+      <Bar>
+        <contentLeft>
+          <Avatar src="sap-icon://da" size="S"/>
+          <Title text="DUCI Operations Copilot" level="H3" class="sapUiTinyMarginBegin"/>
+        </contentLeft>
+        <contentRight>
+          <Button icon="sap-icon://delete" tooltip="Clear Session" press=".onClearSession"/>
+        </contentRight>
+      </Bar>
+    </customHeader>
+
+    <content>
+      <l:FixFlex id="chatLayout" fixContentSize="auto" vertical="true">
+        <l:fixContent>
+          <!-- Suggested Actions -->
+          <HBox class="sapUiSmallMarginBegin sapUiSmallMarginTop" wrap="Wrap">
+            <Button text="Explain Recent Failures"       class="sapUiTinyMarginEnd sapUiTinyMarginBottom" press=".onSuggestedAction" data-action="Explain the most recent job failures and their root causes"/>
+            <Button text="Create Allentown Job"          class="sapUiTinyMarginEnd sapUiTinyMarginBottom" press=".onSuggestedAction" data-action="Help me create a mailing address update job for all active customers in Allentown with address changes in the last 90 days"/>
+            <Button text="Executive Summary"             class="sapUiTinyMarginEnd sapUiTinyMarginBottom" press=".onSuggestedAction" data-action="Generate an executive summary of bulk job activity for the last 30 days"/>
+            <Button text="Reprocessing Recommendations" class="sapUiTinyMarginEnd sapUiTinyMarginBottom" press=".onSuggestedAction" data-action="Recommend which failed jobs should be reprocessed and in what order"/>
+            <Button text="Platform Performance"         class="sapUiTinyMarginEnd sapUiTinyMarginBottom" press=".onSuggestedAction" data-action="How is the MAE processing platform performing? Any bottlenecks?"/>
+          </HBox>
+        </l:fixContent>
+
+        <l:flexContent>
+          <!-- Chat Messages -->
+          <ScrollContainer id="chatScroll" height="100%" horizontal="false" focusable="true">
+            <VBox id="messageContainer" class="sapUiSmallMarginBegin sapUiSmallMarginEnd">
+
+              <!-- Welcome message -->
+              <HBox class="sapUiSmallMarginTop">
+                <Avatar src="sap-icon://da" size="XS" class="sapUiTinyMarginEnd"/>
+                <Panel backgroundDesign="Solid" class="sapUiTinyMarginEnd" width="80%">
+                  <Text text="Hello! I am the DUCI Operations Copilot. I can help you create bulk jobs, analyze failures, recommend remediation, and generate executive summaries. What would you like to do?" class="sapUiSmallMargin" wrapping="true"/>
+                </Panel>
+              </HBox>
+
+              <!-- Dynamic messages from model -->
+              <List
+                id="messageList"
+                items="{copilotModel>/messages}"
+                showNoData="false"
+                showSeparators="None">
+                <CustomListItem>
+                  <HBox justifyContent="{= ${copilotModel>role} === 'user' ? 'End' : 'Start'}" class="sapUiTinyMarginTopBottom">
+                    <Avatar visible="{= ${copilotModel>role} !== 'user'}" src="sap-icon://da" size="XS" class="sapUiTinyMarginEnd"/>
+                    <Panel
+                      backgroundDesign="{= ${copilotModel>role} === 'user' ? 'Translucent' : 'Solid'}"
+                      width="75%">
+                      <VBox class="sapUiSmallMargin">
+                        <Text text="{copilotModel>content}" wrapping="true"/>
+                        <!-- Approval actions if present -->
+                        <HBox visible="{= !!${copilotModel>actions}}" class="sapUiTinyMarginTop">
+                          <Button
+                            text="Approve and Execute"
+                            type="Accept"
+                            press=".onApproveAction"
+                            class="sapUiTinyMarginEnd"/>
+                          <Button
+                            text="Reject"
+                            type="Reject"
+                            press=".onRejectAction"/>
+                        </HBox>
+                      </VBox>
+                    </Panel>
+                    <Avatar visible="{= ${copilotModel>role} === 'user'}" initials="ME" size="XS" class="sapUiTinyMarginBegin"/>
+                  </HBox>
+                </CustomListItem>
+              </List>
+
+              <!-- Typing indicator -->
+              <HBox id="typingIndicator" visible="{copilotModel>/isTyping}">
+                <Avatar src="sap-icon://da" size="XS" class="sapUiTinyMarginEnd"/>
+                <BusyIndicator size="Auto"/>
+                <Text text=" Copilot is thinking..." class="sapUiTinyMarginBegin"/>
+              </HBox>
+            </VBox>
+          </ScrollContainer>
+        </l:flexContent>
+      </l:FixFlex>
+    </content>
+
+    <footer>
+      <Bar>
+        <contentMiddle>
+          <HBox width="100%">
+            <TextArea
+              id="messageInput"
+              placeholder="Ask the copilot... (e.g. 'Create a mailing address job for Allentown')"
+              growing="true"
+              growingMaxLines="3"
+              width="100%"
+              rows="1"
+              submit=".onSendMessage"/>
+            <Button
+              text="Send"
+              type="Emphasized"
+              icon="sap-icon://paper-plane"
+              press=".onSendMessage"
+              class="sapUiTinyMarginBegin"/>
+          </HBox>
+        </contentMiddle>
+      </Bar>
+    </footer>
+  </Page>
+</mvc:View>
