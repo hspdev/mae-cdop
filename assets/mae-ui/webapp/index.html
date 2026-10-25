@@ -1,69 +1,428 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MAE Customer Data Operations Platform | DUCI</title>
-  <style>
-    html, body { margin: 0; height: 100%; }
-    body { font-family: '72', Arial, sans-serif; background: #f5f6f7; }
-    #loading {
-      display: flex; align-items: center; justify-content: center;
-      height: 100vh; flex-direction: column; color: #32363a;
-    }
-    #loading h2 { font-size: 1.4rem; margin-bottom: 8px; }
-    #loading p  { color: #6a6d70; font-size: 0.9rem; }
-    .spinner {
-      width: 40px; height: 40px; border: 4px solid #e5e5e5;
-      border-top-color: #0070f2; border-radius: 50%;
-      animation: spin 0.8s linear infinite; margin-bottom: 20px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
-</head>
-<body class="sapUiBody">
-
-  <!-- Loading indicator shown until UI5 boots -->
-  <div id="loading">
-    <div class="spinner"></div>
-    <h2>MAE Customer Data Operations Platform</h2>
-    <p>Demo Utilities Company Inc. &mdash; Loading&hellip;</p>
-  </div>
-
-  <div id="content"
-    data-sap-ui-component
-    data-name="com.duci.mae.cdop"
-    data-settings='{"id":"cdop"}'
-    style="height:100%; display:none">
-  </div>
-
   <script id="sap-ui-bootstrap"
     src="https://ui5.sap.com/1.120.0/resources/sap-ui-core.js"
     data-sap-ui-theme="sap_horizon"
-    data-sap-ui-resourceroots='{"com.duci.mae.cdop":"./"}'
+    data-sap-ui-libs="sap.m,sap.f,sap.ui.layout,sap.tnt"
     data-sap-ui-compatVersion="edge"
-    data-sap-ui-async="true"
-    data-sap-ui-frameOptions="allow"
-    data-sap-ui-oninit="module:sap/ui/core/ComponentSupport">
+    data-sap-ui-async="false"
+    data-sap-ui-frameOptions="allow">
   </script>
-
   <script>
-    // Show app content once UI5 core is ready, hide loading spinner
     sap.ui.getCore().attachInit(function () {
-      document.getElementById("loading").style.display = "none";
-      document.getElementById("content").style.display = "block";
-    });
 
-    // Fallback: if UI5 doesn't load in 15s, show error
-    setTimeout(function () {
-      var loading = document.getElementById("loading");
-      if (loading && loading.style.display !== "none") {
-        loading.innerHTML =
-          '<h2 style="color:#bb0000">Unable to load UI5 resources</h2>' +
-          '<p>Check your network connection or try refreshing the page.</p>' +
-          '<button onclick="location.reload()" style="padding:8px 16px;margin-top:12px;cursor:pointer">Reload</button>';
+      // ── Shell ─────────────────────────────────────────────────────────────
+      var oNavContainer = new sap.m.NavContainer("appNav");
+
+      var oSideNav = new sap.tnt.SideNavigation({
+        itemSelect: function(oEvent) {
+          var sKey = oEvent.getParameter("item").getKey();
+          oNavContainer.to("page-" + sKey);
+        },
+        items: [
+          new sap.tnt.NavigationListItem({key:"dashboard",        text:"Dashboard",        icon:"sap-icon://home"}),
+          new sap.tnt.NavigationListItem({key:"copilot",          text:"Operations Copilot",icon:"sap-icon://da"}),
+          new sap.tnt.NavigationListItem({key:"createJob",        text:"Create Job",        icon:"sap-icon://add"}),
+          new sap.tnt.NavigationListItem({key:"jobMonitor",       text:"Job Monitor",       icon:"sap-icon://task"}),
+          new sap.tnt.NavigationListItem({key:"failureAnalysis",  text:"Failure Analysis",  icon:"sap-icon://alert"}),
+          new sap.tnt.NavigationListItem({key:"executive",        text:"Executive Summary", icon:"sap-icon://manager-insight"}),
+          new sap.tnt.NavigationListItem({key:"insights",         text:"Platform Insights", icon:"sap-icon://performance"})
+        ]
+      });
+
+      var oToolPage = new sap.tnt.ToolPage({
+        header: new sap.tnt.ToolHeader({
+          content: [
+            new sap.m.Button({icon:"sap-icon://menu2", type:"Transparent", press: function(){ oToolPage.setSideExpanded(!oToolPage.getSideExpanded()); }}),
+            new sap.m.ToolbarSeparator(),
+            new sap.m.Title({text:"MAE Customer Data Operations Platform", titleStyle:"H4"}),
+            new sap.m.ToolbarSpacer(),
+            new sap.m.Text({text:"Demo Utilities Company Inc."}),
+            new sap.m.Avatar({initials:"DC", size:"XS"})
+          ]
+        }),
+        sideContent: oSideNav,
+        mainContents: [oNavContainer]
+      });
+
+      // ── Pages ─────────────────────────────────────────────────────────────
+
+      // 1. DASHBOARD
+      var oDashboard = new sap.m.Page("page-dashboard", {
+        title: "Home Dashboard",
+        showNavButton: false,
+        content: [
+          new sap.m.Panel({
+            headerText: "Platform KPIs",
+            backgroundDesign: "Transparent",
+            content: [
+              new sap.m.FlexBox({
+                wrap: "Wrap",
+                justifyContent: "Start",
+                items: [
+                  _kpiTile("Customer Records Modernized", "87K", "Records", "Target: 100,000", "Good"),
+                  _kpiTile("Success Rate", "94.2%", "%", "Last 30 Days", "Good"),
+                  _kpiTile("Jobs Completed", "12", "Jobs", "All Time", "Good"),
+                  _kpiTile("Hours Saved", "340", "Hours", "Estimated", "Good"),
+                  _kpiTile("AI Recoveries", "1,842", "Records", "Auto-healed", "Good"),
+                  _kpiTile("Cost Avoidance", "$52K", "USD", "Estimated", "Good")
+                ]
+              })
+            ]
+          }),
+          new sap.m.Panel({
+            headerText: "Recent Jobs",
+            backgroundDesign: "Transparent",
+            content: [ _recentJobsTable() ]
+          }),
+          new sap.m.Panel({
+            headerText: "Quick Actions",
+            backgroundDesign: "Transparent",
+            content: [
+              new sap.m.FlexBox({
+                wrap: "Wrap",
+                items: [
+                  new sap.m.Button({text:"Launch Allentown Campaign", type:"Emphasized", icon:"sap-icon://play", press: function(){ sap.m.MessageToast.show("Navigate to Create Job to start the Allentown campaign."); }}),
+                  new sap.m.Button({text:"Open Copilot", icon:"sap-icon://da", press: function(){ oNavContainer.to("page-copilot"); oSideNav.setSelectedItem(oSideNav.getItems()[1]); }}),
+                  new sap.m.Button({text:"View Job Monitor", icon:"sap-icon://task", press: function(){ oNavContainer.to("page-jobMonitor"); oSideNav.setSelectedItem(oSideNav.getItems()[3]); }})
+                ]
+              })
+            ]
+          })
+        ]
+      });
+
+      // 2. COPILOT
+      var aCopilotMessages = [];
+      var oMessageList = new sap.m.List({noDataText: "Ask me anything about DUCI bulk operations."});
+      var oCopilotInput = new sap.m.Input({placeholder: "Ask the DUCI Operations Copilot...", width: "100%"});
+
+      function addMessage(role, text) {
+        aCopilotMessages.push({role: role, text: text});
+        oMessageList.addItem(new sap.m.StandardListItem({
+          title: role === "user" ? "You" : "Copilot",
+          description: text,
+          icon: role === "user" ? "sap-icon://person-placeholder" : "sap-icon://da",
+          iconInset: false
+        }));
       }
-    }, 15000);
+
+      function getCopilotResponse(msg) {
+        var lower = msg.toLowerCase();
+        if (lower.includes("allentown")) return "I found approximately 1,842 active customers in Allentown, PA with address changes in the last 90 days. Would you like me to prepare a MAILING_ADDRESS_UPDATE job for your review? I will NOT execute it until you confirm.";
+        if (lower.includes("create") || lower.includes("job")) return "To create a bulk job I need: (1) Job Type — MAILING_ADDRESS_UPDATE, CONTRACT_ACCOUNT_UPDATE, CUSTOMER_PREFERENCE_UPDATE, or NOTIFICATION_REQUEST. (2) Accounts or filter. (3) Simulation mode? I will prepare the configuration for your approval before anything runs.";
+        if (lower.includes("fail") || lower.includes("error")) return "To analyze failures please provide a Batch ID. I can identify error patterns, root causes, and prepare a reprocessing job for the failed records. No action will be taken without your approval.";
+        if (lower.includes("summary") || lower.includes("report")) return "Executive Summary: 12 jobs completed, 87,420 records modernized, 94.2% success rate, 340 hours saved, $52,400 estimated cost avoidance. Would you like the full PDF report?";
+        return "I am the DUCI Operations Copilot. I can help you create and monitor bulk data jobs, analyze failures, and generate executive reports. What would you like to do today?";
+      }
+
+      var oCopilot = new sap.m.Page("page-copilot", {
+        title: "DUCI Operations Copilot",
+        content: [
+          new sap.m.Panel({headerText:"Conversation", backgroundDesign:"Transparent", height:"400px", content:[oMessageList]}),
+          new sap.m.FlexBox({
+            items: [
+              oCopilotInput,
+              new sap.m.Button({text:"Send", type:"Emphasized", press: function(){
+                var msg = oCopilotInput.getValue();
+                if (!msg.trim()) return;
+                addMessage("user", msg);
+                oCopilotInput.setValue("");
+                setTimeout(function(){ addMessage("copilot", getCopilotResponse(msg)); }, 500);
+              }})
+            ]
+          }),
+          new sap.m.Panel({headerText:"Suggested Actions", backgroundDesign:"Transparent", content:[
+            new sap.m.FlexBox({wrap:"Wrap", items:[
+              new sap.m.Button({text:'Find Allentown customers', press:function(){ oCopilotInput.setValue("Show me active customers in Allentown with recent address changes"); }}),
+              new sap.m.Button({text:'Create address update job', press:function(){ oCopilotInput.setValue("Create a MAILING_ADDRESS_UPDATE job for Allentown"); }}),
+              new sap.m.Button({text:'Generate executive summary', press:function(){ oCopilotInput.setValue("Generate executive summary for this month"); }})
+            ]})
+          ]})
+        ]
+      });
+
+      // 3. CREATE JOB
+      var oJobTypeSelect = new sap.m.Select({items:[
+        new sap.ui.core.Item({key:"MAILING_ADDRESS_UPDATE", text:"Mailing Address Update"}),
+        new sap.ui.core.Item({key:"CONTRACT_ACCOUNT_UPDATE", text:"Contract Account Update"}),
+        new sap.ui.core.Item({key:"CUSTOMER_PREFERENCE_UPDATE", text:"Customer Preference Update"}),
+        new sap.ui.core.Item({key:"NOTIFICATION_REQUEST", text:"Notification Request"})
+      ]});
+      var oSimSwitch = new sap.m.Switch({state: true});
+      var oDescInput = new sap.m.Input({placeholder:"e.g. Allentown Q4 address campaign"});
+      var oAccountsTextArea = new sap.m.TextArea({placeholder:"CA000001\nCA000002\n(one per line, or leave blank for city filter)", rows:5, width:"100%"});
+
+      var oCreateJob = new sap.m.Page("page-createJob", {
+        title: "Create Bulk Job",
+        content: [
+          new sap.m.SimpleForm({
+            editable: true,
+            layout: "ResponsiveGridLayout",
+            content: [
+              new sap.m.Label({text:"Job Type", required:true}),
+              oJobTypeSelect,
+              new sap.m.Label({text:"Description"}),
+              oDescInput,
+              new sap.m.Label({text:"Contract Accounts"}),
+              oAccountsTextArea,
+              new sap.m.Label({text:"Simulation Mode (recommended for first run)"}),
+              oSimSwitch
+            ]
+          }),
+          new sap.m.Button({
+            text: "Submit Job", type:"Emphasized", icon:"sap-icon://play",
+            press: function() {
+              var jobType = oJobTypeSelect.getSelectedKey();
+              var sim = oSimSwitch.getState();
+              var desc = oDescInput.getValue() || jobType + " job";
+              var accounts = oAccountsTextArea.getValue().split("\n").map(function(s){return s.trim();}).filter(Boolean);
+              var payload = {
+                jobType: jobType,
+                parameters: { contractAccounts: accounts.length ? accounts : ["CA000001","CA000002","CA000003"] },
+                simulationMode: sim,
+                description: desc
+              };
+              sap.m.MessageBox.confirm(
+                "Submit " + (sim?"SIMULATION":"REAL") + " job: " + jobType + "?\n\nAccounts: " + payload.parameters.contractAccounts.length,
+                {
+                  title: "Confirm Job Submission",
+                  onClose: function(action) {
+                    if (action !== sap.m.MessageBox.Action.OK) return;
+                    fetch("/api/bulk-jobs/" + jobType, {
+                      method:"POST",
+                      headers:{"Content-Type":"application/json"},
+                      body: JSON.stringify(payload)
+                    }).then(function(r){ return r.json(); })
+                    .then(function(data){
+                      sap.m.MessageToast.show("Job submitted! Batch ID: " + data.batchId);
+                      oNavContainer.to("page-jobMonitor");
+                      oSideNav.setSelectedItem(oSideNav.getItems()[3]);
+                    }).catch(function(e){ sap.m.MessageToast.show("Error: " + e.message); });
+                  }
+                }
+              );
+            }
+          })
+        ]
+      });
+
+      // 4. JOB MONITOR
+      var oJobsModel = new sap.ui.model.json.JSONModel({jobs:[]});
+      var oJobMonitor = new sap.m.Page("page-jobMonitor", {
+        title: "Job Monitor",
+        content: [
+          new sap.m.Toolbar({content:[
+            new sap.m.Title({text:"Active & Recent Jobs"}),
+            new sap.m.ToolbarSpacer(),
+            new sap.m.Button({text:"Refresh", icon:"sap-icon://refresh", press: loadJobs})
+          ]}),
+          new sap.m.Table({
+            id: "jobsTable",
+            noDataText: "No jobs found. Create your first job to get started.",
+            columns: [
+              new sap.m.Column({header: new sap.m.Text({text:"Batch ID"})}),
+              new sap.m.Column({header: new sap.m.Text({text:"Type"})}),
+              new sap.m.Column({header: new sap.m.Text({text:"Status"})}),
+              new sap.m.Column({header: new sap.m.Text({text:"Progress"})}),
+              new sap.m.Column({header: new sap.m.Text({text:"Created"})})
+            ],
+            items: {
+              path: "jobs>/jobs",
+              template: new sap.m.ColumnListItem({
+                cells: [
+                  new sap.m.Text({text:"{jobs>BATCH_ID}", wrapping:false}),
+                  new sap.m.Text({text:"{jobs>JOB_TYPE}"}),
+                  new sap.m.ObjectStatus({text:"{jobs>STATUS}", state:{path:"jobs>STATUS", formatter: function(s){ return s==="COMPLETED"?"Success":s==="FAILED"?"Error":s==="IN_PROGRESS"?"Warning":"None"; }}}),
+                  new sap.m.ProgressIndicator({percentValue:{path:"jobs>PROCESSED_ACCOUNTS", formatter: function(v){ var t=this.getBindingContext("jobs").getObject().TOTAL_ACCOUNTS; return t?Math.round(v/t*100):0; }}}),
+                  new sap.m.Text({text:{path:"jobs>CREATED_ON", formatter:function(d){ return d?new Date(d).toLocaleString():""; }}})
+                ]
+              })
+            },
+            model: oJobsModel
+          })
+        ]
+      });
+      oJobMonitor.setModel(oJobsModel, "jobs");
+
+      function loadJobs() {
+        fetch("/odata/v4/BulkJobService/BatchJobs?$orderby=CREATED_ON%20desc&$top=20")
+          .then(function(r){ return r.json(); })
+          .then(function(d){ oJobsModel.setProperty("/jobs", d.value||[]); })
+          .catch(function(){ oJobsModel.setProperty("/jobs", _demoJobs()); });
+      }
+
+      // 5. FAILURE ANALYSIS
+      var oFailureModel = new sap.ui.model.json.JSONModel({failures:[]});
+      var oFailurePage = new sap.m.Page("page-failureAnalysis", {
+        title: "Failure Analysis",
+        content: [
+          new sap.m.Toolbar({content:[
+            new sap.m.Title({text:"Failed Records"}),
+            new sap.m.ToolbarSpacer(),
+            new sap.m.Button({text:"Load Failures", icon:"sap-icon://refresh", press: loadFailures})
+          ]}),
+          new sap.m.Table({
+            noDataText: "No failures found.",
+            columns:[
+              new sap.m.Column({header:new sap.m.Text({text:"Contract Account"})}),
+              new sap.m.Column({header:new sap.m.Text({text:"Error Message"})}),
+              new sap.m.Column({header:new sap.m.Text({text:"Retry Attempt"})})
+            ],
+            items: {
+              path:"failures>/failures",
+              template: new sap.m.ColumnListItem({
+                cells:[
+                  new sap.m.Text({text:"{failures>CONTRACT_ACCOUNT}"}),
+                  new sap.m.Text({text:"{failures>ERROR_MESSAGE}"}),
+                  new sap.m.Text({text:"{failures>RETRY_ATTEMPT}"})
+                ]
+              })
+            }
+          })
+        ]
+      });
+      oFailurePage.setModel(oFailureModel, "failures");
+
+      function loadFailures() {
+        fetch("/odata/v4/BulkJobService/BatchJobFailureLogs?$top=50")
+          .then(function(r){ return r.json(); })
+          .then(function(d){ oFailureModel.setProperty("/failures", d.value||[]); })
+          .catch(function(){ oFailureModel.setProperty("/failures", _demoFailures()); });
+      }
+
+      // 6. EXECUTIVE SUMMARY
+      var oExecutivePage = new sap.m.Page("page-executive", {
+        title: "Executive Summary",
+        content: [
+          new sap.m.Panel({headerText:"DUCI MAE Platform — Monthly Executive Report", backgroundDesign:"Transparent", content:[
+            new sap.m.FlexBox({wrap:"Wrap", items:[
+              _summaryTile("87,420", "Records Modernized", "sap-icon://person-placeholder"),
+              _summaryTile("94.2%", "Overall Success Rate", "sap-icon://accept"),
+              _summaryTile("12", "Jobs Completed", "sap-icon://task"),
+              _summaryTile("340 hrs", "Hours Saved", "sap-icon://timesheet"),
+              _summaryTile("$52,400", "Cost Avoidance", "sap-icon://money-bills"),
+              _summaryTile("1,842", "AI Recoveries", "sap-icon://ai")
+            ]}),
+            new sap.m.Panel({headerText:"Narrative", content:[
+              new sap.m.Text({text:"In the current period, Demo Utilities Company Inc. successfully processed 12 bulk data modernization campaigns covering Allentown, Bethlehem, and Easton service territories. The Mailing Address Update campaign achieved a 94.2% first-pass success rate with 1,842 records automatically recovered by the AI retry framework. Estimated operational cost avoidance: $52,400 vs. manual processing baseline.", wrapping:true})
+            ]})
+          ]})
+        ]
+      });
+
+      // 7. PLATFORM INSIGHTS
+      var oInsightsPage = new sap.m.Page("page-insights", {
+        title: "Platform Insights",
+        content: [
+          new sap.m.Panel({headerText:"Throughput Benchmarks", backgroundDesign:"Transparent", content:[
+            new sap.m.Table({
+              columns:[
+                new sap.m.Column({header:new sap.m.Text({text:"Batch Size"})}),
+                new sap.m.Column({header:new sap.m.Text({text:"Mode"})}),
+                new sap.m.Column({header:new sap.m.Text({text:"Duration"})}),
+                new sap.m.Column({header:new sap.m.Text({text:"Throughput"})}),
+                new sap.m.Column({header:new sap.m.Text({text:"Status"})})
+              ],
+              items: [
+                _benchRow("10,000","Simulation","8s","1,250 rec/s","✅ Target met"),
+                _benchRow("50,000","Simulation","42s","1,190 rec/s","✅ Target met"),
+                _benchRow("100,000","Simulation","89s","1,123 rec/s","✅ Target met"),
+                _benchRow("10,000","Real","11s","909 rec/s","✅ Target met"),
+                _benchRow("50,000","Real","58s","862 rec/s","✅ Target met"),
+                _benchRow("100,000","Real","2m 3s","812 rec/s","✅ Target met")
+              ]
+            })
+          ]}),
+          new sap.m.Panel({headerText:"Framework Architecture", backgroundDesign:"Transparent", content:[
+            new sap.m.Text({text:"• Strategy Pattern: IBulkJobHandler with MailingAddressHandler, ContractAccountHandler, CustomerPreferenceHandler, NotificationHandler\n• Factory Pattern: HandlerFactory with runtime registration\n• Retry Framework: Exponential backoff (1s/2s/4s), max 3 retries\n• Batch Query: Chunked IN-clause SQL (500 records/chunk), HANA-compatible\n• 7-step pipeline: REQUEST_RECEIVED → VALIDATING → LOADING → PROCESSING → VERIFYING → GENERATING → COMPLETED", wrapping:true})
+          ]})
+        ]
+      });
+
+      // ── Add pages to NavContainer ────────────────────────────────────────
+      [oDashboard, oCopilot, oCreateJob, oJobMonitor, oFailurePage, oExecutivePage, oInsightsPage].forEach(function(p){
+        oNavContainer.addPage(p);
+      });
+
+      // ── Mount shell ──────────────────────────────────────────────────────
+      oToolPage.placeAt("content");
+
+      // Pre-select dashboard
+      oSideNav.setSelectedItem(oSideNav.getItems()[0]);
+
+      // Load live data
+      loadJobs();
+
+      // ── Helper functions ────────────────────────────────────────────────
+      function _kpiTile(header, value, unit, footer, state) {
+        return new sap.m.GenericTile({
+          header: header, subheader: footer,
+          tileContent: [new sap.m.TileContent({unit:unit, content: new sap.m.NumericContent({value:value, valueColor:state||"None"})})],
+          press: function(){ sap.m.MessageToast.show(header + ": " + value + " " + unit); }
+        }).addStyleClass("sapUiTinyMarginEnd sapUiTinyMarginBottom");
+      }
+
+      function _summaryTile(value, label, icon) {
+        return new sap.m.GenericTile({
+          header: value, subheader: label,
+          tileContent: [new sap.m.TileContent({content: new sap.m.NumericContent({value:value, icon:icon})})]
+        }).addStyleClass("sapUiTinyMarginEnd sapUiTinyMarginBottom");
+      }
+
+      function _benchRow(size, mode, dur, tput, status) {
+        return new sap.m.ColumnListItem({cells:[
+          new sap.m.Text({text:size}),
+          new sap.m.Text({text:mode}),
+          new sap.m.Text({text:dur}),
+          new sap.m.Text({text:tput}),
+          new sap.m.Text({text:status})
+        ]});
+      }
+
+      function _recentJobsTable() {
+        var jobs = _demoJobs();
+        var items = jobs.map(function(j){
+          return new sap.m.ColumnListItem({cells:[
+            new sap.m.Text({text: j.BATCH_ID.substring(0,8)+"..."}),
+            new sap.m.Text({text: j.JOB_TYPE.replace(/_/g," ")}),
+            new sap.m.ObjectStatus({text:j.STATUS, state:j.STATUS==="COMPLETED"?"Success":j.STATUS==="FAILED"?"Error":"Warning"}),
+            new sap.m.Text({text: j.SUCCESS_COUNT + "/" + j.TOTAL_ACCOUNTS})
+          ]});
+        });
+        return new sap.m.Table({
+          columns:[
+            new sap.m.Column({header:new sap.m.Text({text:"Batch ID"})}),
+            new sap.m.Column({header:new sap.m.Text({text:"Type"})}),
+            new sap.m.Column({header:new sap.m.Text({text:"Status"})}),
+            new sap.m.Column({header:new sap.m.Text({text:"Success/Total"})})
+          ],
+          items: items
+        });
+      }
+
+      function _demoJobs() {
+        return [
+          {BATCH_ID:"a1b2c3d4-0001-0001-0001-a1b2c3d4e5f6", JOB_TYPE:"MAILING_ADDRESS_UPDATE",     STATUS:"COMPLETED",        TOTAL_ACCOUNTS:1842, SUCCESS_COUNT:1734, FAILED_COUNT:108, CREATED_ON:new Date(Date.now()-3600000).toISOString()},
+          {BATCH_ID:"b2c3d4e5-0002-0002-0002-b2c3d4e5f6a1", JOB_TYPE:"CONTRACT_ACCOUNT_UPDATE",   STATUS:"COMPLETED",        TOTAL_ACCOUNTS:500,  SUCCESS_COUNT:498,  FAILED_COUNT:2,   CREATED_ON:new Date(Date.now()-7200000).toISOString()},
+          {BATCH_ID:"c3d4e5f6-0003-0003-0003-c3d4e5f6a1b2", JOB_TYPE:"CUSTOMER_PREFERENCE_UPDATE",STATUS:"PARTIALLY_COMPLETED",TOTAL_ACCOUNTS:2500, SUCCESS_COUNT:2310, FAILED_COUNT:190, CREATED_ON:new Date(Date.now()-10800000).toISOString()},
+          {BATCH_ID:"d4e5f6a1-0004-0004-0004-d4e5f6a1b2c3", JOB_TYPE:"NOTIFICATION_REQUEST",      STATUS:"COMPLETED",        TOTAL_ACCOUNTS:750,  SUCCESS_COUNT:750,  FAILED_COUNT:0,   CREATED_ON:new Date(Date.now()-14400000).toISOString()}
+        ];
+      }
+
+      function _demoFailures() {
+        return [
+          {CONTRACT_ACCOUNT:"CA-ERR-001", ERROR_MESSAGE:"Address validation failed — street not found in USPS database", RETRY_ATTEMPT:3},
+          {CONTRACT_ACCOUNT:"CA-ERR-002", ERROR_MESSAGE:"Downstream timeout — SAP IS-U unavailable", RETRY_ATTEMPT:2},
+          {CONTRACT_ACCOUNT:"CA-ERR-003", ERROR_MESSAGE:"Duplicate address record detected", RETRY_ATTEMPT:1}
+        ];
+      }
+    });
   </script>
-</body>
+</head>
+<body class="sapUiBody" id="content"></body>
 </html>
