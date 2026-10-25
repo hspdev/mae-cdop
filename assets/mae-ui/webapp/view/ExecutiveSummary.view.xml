@@ -1,0 +1,101 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.ExecutiveSummary"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:l="sap.ui.layout"
+  displayBlock="true">
+
+  <Page title="Executive Summary" showNavButton="false">
+    <customHeader>
+      <Bar>
+        <contentLeft>
+          <Title text="Executive Summary" level="H3"/>
+        </contentLeft>
+        <contentRight>
+          <DatePicker id="fromDate" value="{exec>/fromDate}" placeholder="From Date"/>
+          <DatePicker id="toDate"   value="{exec>/toDate}"   placeholder="To Date"/>
+          <Button text="Generate" type="Emphasized" press=".onGenerate"/>
+          <Button text="Export"   icon="sap-icon://download" press=".onExport"/>
+        </contentRight>
+      </Bar>
+    </customHeader>
+
+    <content>
+      <VBox class="sapUiSmallMargin">
+
+        <!-- Hero KPI Row -->
+        <l:Grid defaultSpan="XL2 L4 M6 S12" class="sapUiSmallMarginBottom">
+          <GenericTile header="Records Modernized" subheader="Total">
+            <TileContent unit="Records">
+              <NumericContent value="{exec>/summary/totalSuccess}" scale="K" valueColor="Good" icon="sap-icon://customer"/>
+            </TileContent>
+          </GenericTile>
+          <GenericTile header="Overall Success Rate" subheader="All Jobs">
+            <TileContent unit="%">
+              <NumericContent value="{exec>/summary/overallSuccessRatePct}" valueColor="{= ${exec>/summary/overallSuccessRatePct} >= 99 ? 'Good' : 'Critical'}" icon="sap-icon://accept"/>
+            </TileContent>
+          </GenericTile>
+          <GenericTile header="Jobs Completed" subheader="In Period">
+            <TileContent unit="Jobs">
+              <NumericContent value="{exec>/summary/completedJobs}" valueColor="Good" icon="sap-icon://task"/>
+            </TileContent>
+          </GenericTile>
+          <GenericTile header="Failed Jobs" subheader="Requiring Attention">
+            <TileContent unit="Jobs">
+              <NumericContent value="{exec>/summary/failedJobs}" valueColor="{= ${exec>/summary/failedJobs} > 0 ? 'Error' : 'Good'}" icon="sap-icon://alert"/>
+            </TileContent>
+          </GenericTile>
+          <GenericTile header="Hours Saved" subheader="vs Manual">
+            <TileContent unit="Hrs">
+              <NumericContent value="{exec>/summary/estimatedHoursSaved}" valueColor="Good" icon="sap-icon://time-entry-request"/>
+            </TileContent>
+          </GenericTile>
+          <GenericTile header="Total Accounts Processed" subheader="All Job Types">
+            <TileContent unit="Accounts">
+              <NumericContent value="{exec>/summary/totalAccounts}" scale="K" valueColor="Good" icon="sap-icon://account"/>
+            </TileContent>
+          </GenericTile>
+        </l:Grid>
+
+        <!-- Summary Narrative -->
+        <Panel headerText="Summary Narrative" expandable="true" expanded="true" class="sapUiSmallMarginBottom">
+          <Text text="{exec>/narrative}" class="sapUiSmallMargin" wrapping="true"/>
+        </Panel>
+
+        <!-- Jobs Breakdown Table -->
+        <Panel headerText="Job Breakdown" expandable="true" expanded="true">
+          <Table
+            id="jobBreakdownTable"
+            items="{exec>/jobs}"
+            noDataText="No jobs in selected period">
+            <headerToolbar>
+              <Toolbar><Title text="Jobs in Period" level="H4"/></Toolbar>
+            </headerToolbar>
+            <columns>
+              <Column><Label text="Job Type"/></Column>
+              <Column hAlign="End"><Label text="Total"/></Column>
+              <Column hAlign="End"><Label text="Success"/></Column>
+              <Column hAlign="End"><Label text="Failed"/></Column>
+              <Column><Label text="Status"/></Column>
+              <Column><Label text="Duration"/></Column>
+              <Column><Label text="Completed On"/></Column>
+            </columns>
+            <items>
+              <ColumnListItem>
+                <Text text="{exec>JOB_TYPE}"/>
+                <Text text="{exec>TOTAL_ACCOUNTS}"/>
+                <Text text="{exec>SUCCESS_COUNT}" class="sapUiPositiveText"/>
+                <Text text="{exec>FAILED_COUNT}"  class="{= ${exec>FAILED_COUNT} > 0 ? 'sapUiNegativeText' : ''}"/>
+                <ObjectStatus
+                  text="{exec>STATUS}"
+                  state="{= ${exec>STATUS} === 'COMPLETED' ? 'Success' : ${exec>STATUS} === 'FAILED' ? 'Error' : 'Warning'}"/>
+                <Text text="{= ${exec>DURATION_SECONDS} ? ${exec>DURATION_SECONDS} + 's' : '—'}"/>
+                <Text text="{exec>COMPLETED_ON}"/>
+              </ColumnListItem>
+            </items>
+          </Table>
+        </Panel>
+      </VBox>
+    </content>
+  </Page>
+</mvc:View>
