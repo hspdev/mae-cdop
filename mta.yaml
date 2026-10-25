@@ -1,0 +1,170 @@
+_schema-version: "3.1"
+ID: mae-cdop
+version: 1.0.0
+description: MAE Autonomous Customer Data Operations Platform for Demo Utilities Company Inc. (DUCI)
+
+parameters:
+  enable-parallel-deployments: true
+  deploy_mode: html5-repo
+
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm --prefix assets/mae-cap-backend ci
+        - npm --prefix assets/mae-cap-backend run build
+
+modules:
+
+  # ── CAP Backend ────────────────────────────────────────────────────────────
+  - name: mae-cap-backend
+    type: nodejs
+    path: assets/mae-cap-backend
+    build-parameters:
+      builder: npm
+      build-result: gen/srv
+      ignore: [".env", "node_modules/", "test/"]
+    parameters:
+      instances: 1
+      memory: 512M
+      disk-quota: 1G
+      health-check-type: http
+      health-check-http-endpoint: /health
+    provides:
+      - name: mae-cap-backend-srv-url
+        properties:
+          srv-url: ${default-url}
+    requires:
+      - name: mae-hana
+      - name: mae-xsuaa
+      - name: mae-destination
+      - name: mae-job-scheduler
+      - name: mae-aicore
+    properties:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      MAX_RETRY_COUNT: 3
+      RETRY_BASE_DELAY_MS: 1000
+      BATCH_CHUNK_SIZE: 500
+      SIMULATION_MODE: false
+
+  # ── HANA DB Deployer ───────────────────────────────────────────────────────
+  - name: mae-hana-deployer
+    type: hdb
+    path: assets/mae-cap-backend/db
+    build-parameters:
+      requires:
+        - name: mae-cap-backend
+          artifacts:
+            - .hdiconfig
+            - src/**
+    parameters:
+      instances: 1
+      memory: 256M
+    requires:
+      - name: mae-hana
+
+  # ── SAPUI5 Approuter ──────────────────────────────────────────────────────
+  - name: mae-ui-approuter
+    type: approuter.nodejs
+    path: assets/mae-ui
+    parameters:
+      keep-existing-routes: true
+      memory: 128M
+      disk-quota: 256M
+    properties:
+      TENANT_HOST_PATTERN: "^(.*)-${default-uri}"
+    requires:
+      - name: mae-xsuaa
+      - name: mae-html5-repo-runtime
+      - name: mae-destination
+      - name: mae-cap-backend-srv-url
+        group: destinations
+        properties:
+          name: mae-cap-backend
+          url: ~{srv-url}
+          forwardAuthToken: true
+
+  # ── UI5 App Content ───────────────────────────────────────────────────────
+  - name: mae-ui-content
+    type: com.sap.application.content
+    path: assets/mae-ui
+    requires:
+      - name: mae-html5-repo-host
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: dist
+      requires:
+        - artifacts:
+            - com.duci.mae.cdop.zip
+          name: mae-ui
+          target-path: dist/
+  
+  - name: mae-ui
+    type: html5
+    path: assets/mae-ui/webapp
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm run build
+      supported-platforms: []
+
+resources:
+
+  # ── SAP HANA Cloud ─────────────────────────────────────────────────────────
+  - name: mae-hana
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+    properties:
+      hdi-service-name: ${service-name}
+
+  # ── XSUAA ─────────────────────────────────────────────────────────────────
+  - name: mae-xsuaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+      config:
+        xsappname: mae-cdop-${org}-${space}
+        tenant-mode: dedicated
+
+  # ── Destination Service ───────────────────────────────────────────────────
+  - name: mae-destination
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
+
+  # ── Job Scheduler ─────────────────────────────────────────────────────────
+  - name: mae-job-scheduler
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: jobscheduler
+      service-plan: lite
+
+  # ── HTML5 Repository ──────────────────────────────────────────────────────
+  - name: mae-html5-repo-runtime
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-runtime
+
+  - name: mae-html5-repo-host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+      config:
+        sizeLimit: 10
+
+  # ── SAP AI Core (Generative AI Hub) ───────────────────────────────────────
+  - name: mae-aicore
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: aicore
+      service-plan: extended
