@@ -1,428 +1,532 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MAE Customer Data Operations Platform | DUCI</title>
-  <script id="sap-ui-bootstrap"
-    src="https://ui5.sap.com/1.120.0/resources/sap-ui-core.js"
-    data-sap-ui-theme="sap_horizon"
-    data-sap-ui-libs="sap.m,sap.f,sap.ui.layout,sap.tnt"
-    data-sap-ui-compatVersion="edge"
-    data-sap-ui-async="false"
-    data-sap-ui-frameOptions="allow">
-  </script>
-  <script>
-    sap.ui.getCore().attachInit(function () {
-
-      // ── Shell ─────────────────────────────────────────────────────────────
-      var oNavContainer = new sap.m.NavContainer("appNav");
-
-      var oSideNav = new sap.tnt.SideNavigation({
-        itemSelect: function(oEvent) {
-          var sKey = oEvent.getParameter("item").getKey();
-          oNavContainer.to("page-" + sKey);
-        },
-        items: [
-          new sap.tnt.NavigationListItem({key:"dashboard",        text:"Dashboard",        icon:"sap-icon://home"}),
-          new sap.tnt.NavigationListItem({key:"copilot",          text:"Operations Copilot",icon:"sap-icon://da"}),
-          new sap.tnt.NavigationListItem({key:"createJob",        text:"Create Job",        icon:"sap-icon://add"}),
-          new sap.tnt.NavigationListItem({key:"jobMonitor",       text:"Job Monitor",       icon:"sap-icon://task"}),
-          new sap.tnt.NavigationListItem({key:"failureAnalysis",  text:"Failure Analysis",  icon:"sap-icon://alert"}),
-          new sap.tnt.NavigationListItem({key:"executive",        text:"Executive Summary", icon:"sap-icon://manager-insight"}),
-          new sap.tnt.NavigationListItem({key:"insights",         text:"Platform Insights", icon:"sap-icon://performance"})
-        ]
-      });
-
-      var oToolPage = new sap.tnt.ToolPage({
-        header: new sap.tnt.ToolHeader({
-          content: [
-            new sap.m.Button({icon:"sap-icon://menu2", type:"Transparent", press: function(){ oToolPage.setSideExpanded(!oToolPage.getSideExpanded()); }}),
-            new sap.m.ToolbarSeparator(),
-            new sap.m.Title({text:"MAE Customer Data Operations Platform", titleStyle:"H4"}),
-            new sap.m.ToolbarSpacer(),
-            new sap.m.Text({text:"Demo Utilities Company Inc."}),
-            new sap.m.Avatar({initials:"DC", size:"XS"})
-          ]
-        }),
-        sideContent: oSideNav,
-        mainContents: [oNavContainer]
-      });
-
-      // ── Pages ─────────────────────────────────────────────────────────────
-
-      // 1. DASHBOARD
-      var oDashboard = new sap.m.Page("page-dashboard", {
-        title: "Home Dashboard",
-        showNavButton: false,
-        content: [
-          new sap.m.Panel({
-            headerText: "Platform KPIs",
-            backgroundDesign: "Transparent",
-            content: [
-              new sap.m.FlexBox({
-                wrap: "Wrap",
-                justifyContent: "Start",
-                items: [
-                  _kpiTile("Customer Records Modernized", "87K", "Records", "Target: 100,000", "Good"),
-                  _kpiTile("Success Rate", "94.2%", "%", "Last 30 Days", "Good"),
-                  _kpiTile("Jobs Completed", "12", "Jobs", "All Time", "Good"),
-                  _kpiTile("Hours Saved", "340", "Hours", "Estimated", "Good"),
-                  _kpiTile("AI Recoveries", "1,842", "Records", "Auto-healed", "Good"),
-                  _kpiTile("Cost Avoidance", "$52K", "USD", "Estimated", "Good")
-                ]
-              })
-            ]
-          }),
-          new sap.m.Panel({
-            headerText: "Recent Jobs",
-            backgroundDesign: "Transparent",
-            content: [ _recentJobsTable() ]
-          }),
-          new sap.m.Panel({
-            headerText: "Quick Actions",
-            backgroundDesign: "Transparent",
-            content: [
-              new sap.m.FlexBox({
-                wrap: "Wrap",
-                items: [
-                  new sap.m.Button({text:"Launch Allentown Campaign", type:"Emphasized", icon:"sap-icon://play", press: function(){ sap.m.MessageToast.show("Navigate to Create Job to start the Allentown campaign."); }}),
-                  new sap.m.Button({text:"Open Copilot", icon:"sap-icon://da", press: function(){ oNavContainer.to("page-copilot"); oSideNav.setSelectedItem(oSideNav.getItems()[1]); }}),
-                  new sap.m.Button({text:"View Job Monitor", icon:"sap-icon://task", press: function(){ oNavContainer.to("page-jobMonitor"); oSideNav.setSelectedItem(oSideNav.getItems()[3]); }})
-                ]
-              })
-            ]
-          })
-        ]
-      });
-
-      // 2. COPILOT
-      var aCopilotMessages = [];
-      var oMessageList = new sap.m.List({noDataText: "Ask me anything about DUCI bulk operations."});
-      var oCopilotInput = new sap.m.Input({placeholder: "Ask the DUCI Operations Copilot...", width: "100%"});
-
-      function addMessage(role, text) {
-        aCopilotMessages.push({role: role, text: text});
-        oMessageList.addItem(new sap.m.StandardListItem({
-          title: role === "user" ? "You" : "Copilot",
-          description: text,
-          icon: role === "user" ? "sap-icon://person-placeholder" : "sap-icon://da",
-          iconInset: false
-        }));
-      }
-
-      function getCopilotResponse(msg) {
-        var lower = msg.toLowerCase();
-        if (lower.includes("allentown")) return "I found approximately 1,842 active customers in Allentown, PA with address changes in the last 90 days. Would you like me to prepare a MAILING_ADDRESS_UPDATE job for your review? I will NOT execute it until you confirm.";
-        if (lower.includes("create") || lower.includes("job")) return "To create a bulk job I need: (1) Job Type — MAILING_ADDRESS_UPDATE, CONTRACT_ACCOUNT_UPDATE, CUSTOMER_PREFERENCE_UPDATE, or NOTIFICATION_REQUEST. (2) Accounts or filter. (3) Simulation mode? I will prepare the configuration for your approval before anything runs.";
-        if (lower.includes("fail") || lower.includes("error")) return "To analyze failures please provide a Batch ID. I can identify error patterns, root causes, and prepare a reprocessing job for the failed records. No action will be taken without your approval.";
-        if (lower.includes("summary") || lower.includes("report")) return "Executive Summary: 12 jobs completed, 87,420 records modernized, 94.2% success rate, 340 hours saved, $52,400 estimated cost avoidance. Would you like the full PDF report?";
-        return "I am the DUCI Operations Copilot. I can help you create and monitor bulk data jobs, analyze failures, and generate executive reports. What would you like to do today?";
-      }
-
-      var oCopilot = new sap.m.Page("page-copilot", {
-        title: "DUCI Operations Copilot",
-        content: [
-          new sap.m.Panel({headerText:"Conversation", backgroundDesign:"Transparent", height:"400px", content:[oMessageList]}),
-          new sap.m.FlexBox({
-            items: [
-              oCopilotInput,
-              new sap.m.Button({text:"Send", type:"Emphasized", press: function(){
-                var msg = oCopilotInput.getValue();
-                if (!msg.trim()) return;
-                addMessage("user", msg);
-                oCopilotInput.setValue("");
-                setTimeout(function(){ addMessage("copilot", getCopilotResponse(msg)); }, 500);
-              }})
-            ]
-          }),
-          new sap.m.Panel({headerText:"Suggested Actions", backgroundDesign:"Transparent", content:[
-            new sap.m.FlexBox({wrap:"Wrap", items:[
-              new sap.m.Button({text:'Find Allentown customers', press:function(){ oCopilotInput.setValue("Show me active customers in Allentown with recent address changes"); }}),
-              new sap.m.Button({text:'Create address update job', press:function(){ oCopilotInput.setValue("Create a MAILING_ADDRESS_UPDATE job for Allentown"); }}),
-              new sap.m.Button({text:'Generate executive summary', press:function(){ oCopilotInput.setValue("Generate executive summary for this month"); }})
-            ]})
-          ]})
-        ]
-      });
-
-      // 3. CREATE JOB
-      var oJobTypeSelect = new sap.m.Select({items:[
-        new sap.ui.core.Item({key:"MAILING_ADDRESS_UPDATE", text:"Mailing Address Update"}),
-        new sap.ui.core.Item({key:"CONTRACT_ACCOUNT_UPDATE", text:"Contract Account Update"}),
-        new sap.ui.core.Item({key:"CUSTOMER_PREFERENCE_UPDATE", text:"Customer Preference Update"}),
-        new sap.ui.core.Item({key:"NOTIFICATION_REQUEST", text:"Notification Request"})
-      ]});
-      var oSimSwitch = new sap.m.Switch({state: true});
-      var oDescInput = new sap.m.Input({placeholder:"e.g. Allentown Q4 address campaign"});
-      var oAccountsTextArea = new sap.m.TextArea({placeholder:"CA000001\nCA000002\n(one per line, or leave blank for city filter)", rows:5, width:"100%"});
-
-      var oCreateJob = new sap.m.Page("page-createJob", {
-        title: "Create Bulk Job",
-        content: [
-          new sap.m.SimpleForm({
-            editable: true,
-            layout: "ResponsiveGridLayout",
-            content: [
-              new sap.m.Label({text:"Job Type", required:true}),
-              oJobTypeSelect,
-              new sap.m.Label({text:"Description"}),
-              oDescInput,
-              new sap.m.Label({text:"Contract Accounts"}),
-              oAccountsTextArea,
-              new sap.m.Label({text:"Simulation Mode (recommended for first run)"}),
-              oSimSwitch
-            ]
-          }),
-          new sap.m.Button({
-            text: "Submit Job", type:"Emphasized", icon:"sap-icon://play",
-            press: function() {
-              var jobType = oJobTypeSelect.getSelectedKey();
-              var sim = oSimSwitch.getState();
-              var desc = oDescInput.getValue() || jobType + " job";
-              var accounts = oAccountsTextArea.getValue().split("\n").map(function(s){return s.trim();}).filter(Boolean);
-              var payload = {
-                jobType: jobType,
-                parameters: { contractAccounts: accounts.length ? accounts : ["CA000001","CA000002","CA000003"] },
-                simulationMode: sim,
-                description: desc
-              };
-              sap.m.MessageBox.confirm(
-                "Submit " + (sim?"SIMULATION":"REAL") + " job: " + jobType + "?\n\nAccounts: " + payload.parameters.contractAccounts.length,
-                {
-                  title: "Confirm Job Submission",
-                  onClose: function(action) {
-                    if (action !== sap.m.MessageBox.Action.OK) return;
-                    fetch("/api/bulk-jobs/" + jobType, {
-                      method:"POST",
-                      headers:{"Content-Type":"application/json"},
-                      body: JSON.stringify(payload)
-                    }).then(function(r){ return r.json(); })
-                    .then(function(data){
-                      sap.m.MessageToast.show("Job submitted! Batch ID: " + data.batchId);
-                      oNavContainer.to("page-jobMonitor");
-                      oSideNav.setSelectedItem(oSideNav.getItems()[3]);
-                    }).catch(function(e){ sap.m.MessageToast.show("Error: " + e.message); });
-                  }
-                }
-              );
-            }
-          })
-        ]
-      });
-
-      // 4. JOB MONITOR
-      var oJobsModel = new sap.ui.model.json.JSONModel({jobs:[]});
-      var oJobMonitor = new sap.m.Page("page-jobMonitor", {
-        title: "Job Monitor",
-        content: [
-          new sap.m.Toolbar({content:[
-            new sap.m.Title({text:"Active & Recent Jobs"}),
-            new sap.m.ToolbarSpacer(),
-            new sap.m.Button({text:"Refresh", icon:"sap-icon://refresh", press: loadJobs})
-          ]}),
-          new sap.m.Table({
-            id: "jobsTable",
-            noDataText: "No jobs found. Create your first job to get started.",
-            columns: [
-              new sap.m.Column({header: new sap.m.Text({text:"Batch ID"})}),
-              new sap.m.Column({header: new sap.m.Text({text:"Type"})}),
-              new sap.m.Column({header: new sap.m.Text({text:"Status"})}),
-              new sap.m.Column({header: new sap.m.Text({text:"Progress"})}),
-              new sap.m.Column({header: new sap.m.Text({text:"Created"})})
-            ],
-            items: {
-              path: "jobs>/jobs",
-              template: new sap.m.ColumnListItem({
-                cells: [
-                  new sap.m.Text({text:"{jobs>BATCH_ID}", wrapping:false}),
-                  new sap.m.Text({text:"{jobs>JOB_TYPE}"}),
-                  new sap.m.ObjectStatus({text:"{jobs>STATUS}", state:{path:"jobs>STATUS", formatter: function(s){ return s==="COMPLETED"?"Success":s==="FAILED"?"Error":s==="IN_PROGRESS"?"Warning":"None"; }}}),
-                  new sap.m.ProgressIndicator({percentValue:{path:"jobs>PROCESSED_ACCOUNTS", formatter: function(v){ var t=this.getBindingContext("jobs").getObject().TOTAL_ACCOUNTS; return t?Math.round(v/t*100):0; }}}),
-                  new sap.m.Text({text:{path:"jobs>CREATED_ON", formatter:function(d){ return d?new Date(d).toLocaleString():""; }}})
-                ]
-              })
-            },
-            model: oJobsModel
-          })
-        ]
-      });
-      oJobMonitor.setModel(oJobsModel, "jobs");
-
-      function loadJobs() {
-        fetch("/odata/v4/BulkJobService/BatchJobs?$orderby=CREATED_ON%20desc&$top=20")
-          .then(function(r){ return r.json(); })
-          .then(function(d){ oJobsModel.setProperty("/jobs", d.value||[]); })
-          .catch(function(){ oJobsModel.setProperty("/jobs", _demoJobs()); });
-      }
-
-      // 5. FAILURE ANALYSIS
-      var oFailureModel = new sap.ui.model.json.JSONModel({failures:[]});
-      var oFailurePage = new sap.m.Page("page-failureAnalysis", {
-        title: "Failure Analysis",
-        content: [
-          new sap.m.Toolbar({content:[
-            new sap.m.Title({text:"Failed Records"}),
-            new sap.m.ToolbarSpacer(),
-            new sap.m.Button({text:"Load Failures", icon:"sap-icon://refresh", press: loadFailures})
-          ]}),
-          new sap.m.Table({
-            noDataText: "No failures found.",
-            columns:[
-              new sap.m.Column({header:new sap.m.Text({text:"Contract Account"})}),
-              new sap.m.Column({header:new sap.m.Text({text:"Error Message"})}),
-              new sap.m.Column({header:new sap.m.Text({text:"Retry Attempt"})})
-            ],
-            items: {
-              path:"failures>/failures",
-              template: new sap.m.ColumnListItem({
-                cells:[
-                  new sap.m.Text({text:"{failures>CONTRACT_ACCOUNT}"}),
-                  new sap.m.Text({text:"{failures>ERROR_MESSAGE}"}),
-                  new sap.m.Text({text:"{failures>RETRY_ATTEMPT}"})
-                ]
-              })
-            }
-          })
-        ]
-      });
-      oFailurePage.setModel(oFailureModel, "failures");
-
-      function loadFailures() {
-        fetch("/odata/v4/BulkJobService/BatchJobFailureLogs?$top=50")
-          .then(function(r){ return r.json(); })
-          .then(function(d){ oFailureModel.setProperty("/failures", d.value||[]); })
-          .catch(function(){ oFailureModel.setProperty("/failures", _demoFailures()); });
-      }
-
-      // 6. EXECUTIVE SUMMARY
-      var oExecutivePage = new sap.m.Page("page-executive", {
-        title: "Executive Summary",
-        content: [
-          new sap.m.Panel({headerText:"DUCI MAE Platform — Monthly Executive Report", backgroundDesign:"Transparent", content:[
-            new sap.m.FlexBox({wrap:"Wrap", items:[
-              _summaryTile("87,420", "Records Modernized", "sap-icon://person-placeholder"),
-              _summaryTile("94.2%", "Overall Success Rate", "sap-icon://accept"),
-              _summaryTile("12", "Jobs Completed", "sap-icon://task"),
-              _summaryTile("340 hrs", "Hours Saved", "sap-icon://timesheet"),
-              _summaryTile("$52,400", "Cost Avoidance", "sap-icon://money-bills"),
-              _summaryTile("1,842", "AI Recoveries", "sap-icon://ai")
-            ]}),
-            new sap.m.Panel({headerText:"Narrative", content:[
-              new sap.m.Text({text:"In the current period, Demo Utilities Company Inc. successfully processed 12 bulk data modernization campaigns covering Allentown, Bethlehem, and Easton service territories. The Mailing Address Update campaign achieved a 94.2% first-pass success rate with 1,842 records automatically recovered by the AI retry framework. Estimated operational cost avoidance: $52,400 vs. manual processing baseline.", wrapping:true})
-            ]})
-          ]})
-        ]
-      });
-
-      // 7. PLATFORM INSIGHTS
-      var oInsightsPage = new sap.m.Page("page-insights", {
-        title: "Platform Insights",
-        content: [
-          new sap.m.Panel({headerText:"Throughput Benchmarks", backgroundDesign:"Transparent", content:[
-            new sap.m.Table({
-              columns:[
-                new sap.m.Column({header:new sap.m.Text({text:"Batch Size"})}),
-                new sap.m.Column({header:new sap.m.Text({text:"Mode"})}),
-                new sap.m.Column({header:new sap.m.Text({text:"Duration"})}),
-                new sap.m.Column({header:new sap.m.Text({text:"Throughput"})}),
-                new sap.m.Column({header:new sap.m.Text({text:"Status"})})
-              ],
-              items: [
-                _benchRow("10,000","Simulation","8s","1,250 rec/s","✅ Target met"),
-                _benchRow("50,000","Simulation","42s","1,190 rec/s","✅ Target met"),
-                _benchRow("100,000","Simulation","89s","1,123 rec/s","✅ Target met"),
-                _benchRow("10,000","Real","11s","909 rec/s","✅ Target met"),
-                _benchRow("50,000","Real","58s","862 rec/s","✅ Target met"),
-                _benchRow("100,000","Real","2m 3s","812 rec/s","✅ Target met")
-              ]
-            })
-          ]}),
-          new sap.m.Panel({headerText:"Framework Architecture", backgroundDesign:"Transparent", content:[
-            new sap.m.Text({text:"• Strategy Pattern: IBulkJobHandler with MailingAddressHandler, ContractAccountHandler, CustomerPreferenceHandler, NotificationHandler\n• Factory Pattern: HandlerFactory with runtime registration\n• Retry Framework: Exponential backoff (1s/2s/4s), max 3 retries\n• Batch Query: Chunked IN-clause SQL (500 records/chunk), HANA-compatible\n• 7-step pipeline: REQUEST_RECEIVED → VALIDATING → LOADING → PROCESSING → VERIFYING → GENERATING → COMPLETED", wrapping:true})
-          ]})
-        ]
-      });
-
-      // ── Add pages to NavContainer ────────────────────────────────────────
-      [oDashboard, oCopilot, oCreateJob, oJobMonitor, oFailurePage, oExecutivePage, oInsightsPage].forEach(function(p){
-        oNavContainer.addPage(p);
-      });
-
-      // ── Mount shell ──────────────────────────────────────────────────────
-      oToolPage.placeAt("content");
-
-      // Pre-select dashboard
-      oSideNav.setSelectedItem(oSideNav.getItems()[0]);
-
-      // Load live data
-      loadJobs();
-
-      // ── Helper functions ────────────────────────────────────────────────
-      function _kpiTile(header, value, unit, footer, state) {
-        return new sap.m.GenericTile({
-          header: header, subheader: footer,
-          tileContent: [new sap.m.TileContent({unit:unit, content: new sap.m.NumericContent({value:value, valueColor:state||"None"})})],
-          press: function(){ sap.m.MessageToast.show(header + ": " + value + " " + unit); }
-        }).addStyleClass("sapUiTinyMarginEnd sapUiTinyMarginBottom");
-      }
-
-      function _summaryTile(value, label, icon) {
-        return new sap.m.GenericTile({
-          header: value, subheader: label,
-          tileContent: [new sap.m.TileContent({content: new sap.m.NumericContent({value:value, icon:icon})})]
-        }).addStyleClass("sapUiTinyMarginEnd sapUiTinyMarginBottom");
-      }
-
-      function _benchRow(size, mode, dur, tput, status) {
-        return new sap.m.ColumnListItem({cells:[
-          new sap.m.Text({text:size}),
-          new sap.m.Text({text:mode}),
-          new sap.m.Text({text:dur}),
-          new sap.m.Text({text:tput}),
-          new sap.m.Text({text:status})
-        ]});
-      }
-
-      function _recentJobsTable() {
-        var jobs = _demoJobs();
-        var items = jobs.map(function(j){
-          return new sap.m.ColumnListItem({cells:[
-            new sap.m.Text({text: j.BATCH_ID.substring(0,8)+"..."}),
-            new sap.m.Text({text: j.JOB_TYPE.replace(/_/g," ")}),
-            new sap.m.ObjectStatus({text:j.STATUS, state:j.STATUS==="COMPLETED"?"Success":j.STATUS==="FAILED"?"Error":"Warning"}),
-            new sap.m.Text({text: j.SUCCESS_COUNT + "/" + j.TOTAL_ACCOUNTS})
-          ]});
-        });
-        return new sap.m.Table({
-          columns:[
-            new sap.m.Column({header:new sap.m.Text({text:"Batch ID"})}),
-            new sap.m.Column({header:new sap.m.Text({text:"Type"})}),
-            new sap.m.Column({header:new sap.m.Text({text:"Status"})}),
-            new sap.m.Column({header:new sap.m.Text({text:"Success/Total"})})
-          ],
-          items: items
-        });
-      }
-
-      function _demoJobs() {
-        return [
-          {BATCH_ID:"a1b2c3d4-0001-0001-0001-a1b2c3d4e5f6", JOB_TYPE:"MAILING_ADDRESS_UPDATE",     STATUS:"COMPLETED",        TOTAL_ACCOUNTS:1842, SUCCESS_COUNT:1734, FAILED_COUNT:108, CREATED_ON:new Date(Date.now()-3600000).toISOString()},
-          {BATCH_ID:"b2c3d4e5-0002-0002-0002-b2c3d4e5f6a1", JOB_TYPE:"CONTRACT_ACCOUNT_UPDATE",   STATUS:"COMPLETED",        TOTAL_ACCOUNTS:500,  SUCCESS_COUNT:498,  FAILED_COUNT:2,   CREATED_ON:new Date(Date.now()-7200000).toISOString()},
-          {BATCH_ID:"c3d4e5f6-0003-0003-0003-c3d4e5f6a1b2", JOB_TYPE:"CUSTOMER_PREFERENCE_UPDATE",STATUS:"PARTIALLY_COMPLETED",TOTAL_ACCOUNTS:2500, SUCCESS_COUNT:2310, FAILED_COUNT:190, CREATED_ON:new Date(Date.now()-10800000).toISOString()},
-          {BATCH_ID:"d4e5f6a1-0004-0004-0004-d4e5f6a1b2c3", JOB_TYPE:"NOTIFICATION_REQUEST",      STATUS:"COMPLETED",        TOTAL_ACCOUNTS:750,  SUCCESS_COUNT:750,  FAILED_COUNT:0,   CREATED_ON:new Date(Date.now()-14400000).toISOString()}
-        ];
-      }
-
-      function _demoFailures() {
-        return [
-          {CONTRACT_ACCOUNT:"CA-ERR-001", ERROR_MESSAGE:"Address validation failed — street not found in USPS database", RETRY_ATTEMPT:3},
-          {CONTRACT_ACCOUNT:"CA-ERR-002", ERROR_MESSAGE:"Downstream timeout — SAP IS-U unavailable", RETRY_ATTEMPT:2},
-          {CONTRACT_ACCOUNT:"CA-ERR-003", ERROR_MESSAGE:"Duplicate address record detected", RETRY_ATTEMPT:1}
-        ];
-      }
-    });
-  </script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>MAE | DUCI Operations Platform</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f6fa;color:#32363a}
+#shell{display:flex;height:100vh;overflow:hidden}
+/* Sidebar */
+#sidebar{width:240px;background:#354a5e;color:#fff;display:flex;flex-direction:column;transition:width .2s}
+#sidebar.collapsed{width:56px}
+#sidebar-header{padding:16px;display:flex;align-items:center;gap:10px;background:#2c3f51;min-height:56px}
+#sidebar-header .logo{font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden}
+#sidebar-header .toggle{cursor:pointer;font-size:18px;flex-shrink:0;user-select:none}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-left:3px solid transparent;transition:background .15s;white-space:nowrap;overflow:hidden}
+.nav-item:hover{background:rgba(255,255,255,.1)}
+.nav-item.active{background:rgba(255,255,255,.15);border-left-color:#0a6ed1}
+.nav-item .icon{font-size:18px;flex-shrink:0;width:24px;text-align:center}
+.nav-label{font-size:14px;overflow:hidden}
+#sidebar.collapsed .nav-label{display:none}
+#sidebar.collapsed #sidebar-header .logo{display:none}
+/* Main */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#topbar{height:56px;background:#fff;border-bottom:1px solid #e5e5e5;display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0}
+#topbar h1{font-size:16px;font-weight:600;color:#32363a}
+#topbar .spacer{flex:1}
+.avatar{width:36px;height:36px;background:#0a6ed1;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
+#content{flex:1;overflow-y:auto;padding:24px}
+/* Pages */
+.page{display:none}
+.page.active{display:block}
+/* Cards & KPIs */
+.page-title{font-size:20px;font-weight:700;margin-bottom:20px;color:#32363a}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.kpi-card{background:#fff;border-radius:8px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-top:3px solid #0a6ed1}
+.kpi-card.green{border-top-color:#107e3e}
+.kpi-card.orange{border-top-color:#e9730c}
+.kpi-card.red{border-top-color:#bb0000}
+.kpi-value{font-size:28px;font-weight:700;color:#32363a}
+.kpi-label{font-size:12px;color:#6a7988;margin-top:4px}
+.kpi-sub{font-size:11px;color:#8a9bad;margin-top:2px}
+/* Panels */
+.panel{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:20px;overflow:hidden}
+.panel-header{padding:16px 20px;font-weight:600;font-size:14px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:8px}
+.panel-body{padding:20px}
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 12px;background:#f8f9fa;color:#6a7988;font-weight:600;border-bottom:2px solid #e5e5e5}
+td{padding:10px 12px;border-bottom:1px solid #f0f0f0}
+tr:hover td{background:#fafbfc}
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.badge-success{background:#e8f5e9;color:#107e3e}
+.badge-error{background:#fdecea;color:#bb0000}
+.badge-warning{background:#fff3e0;color:#e9730c}
+.badge-info{background:#e8f0fe;color:#0a6ed1}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:background .15s}
+.btn-primary{background:#0a6ed1;color:#fff}
+.btn-primary:hover{background:#0854a0}
+.btn-secondary{background:#f5f6fa;color:#32363a;border:1px solid #d9d9d9}
+.btn-secondary:hover{background:#e8e8e8}
+.btn-danger{background:#bb0000;color:#fff}
+.btn-danger:hover{background:#990000}
+.btn-sm{padding:5px 12px;font-size:12px}
+/* Forms */
+.form-row{margin-bottom:16px}
+.form-label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:#32363a}
+.form-control{width:100%;padding:8px 12px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;color:#32363a;background:#fff}
+.form-control:focus{outline:none;border-color:#0a6ed1;box-shadow:0 0 0 2px rgba(10,110,209,.15)}
+select.form-control{cursor:pointer}
+/* Toggle */
+.toggle-row{display:flex;align-items:center;gap:12px}
+.toggle{position:relative;width:40px;height:22px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:22px;transition:.3s}
+.toggle-slider:before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+input:checked+.toggle-slider{background:#0a6ed1}
+input:checked+.toggle-slider:before{transform:translateX(18px)}
+/* Chat */
+#chat-messages{height:320px;overflow-y:auto;background:#f8f9fa;border-radius:8px;padding:16px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:75%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5}
+.msg-user{background:#0a6ed1;color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.msg-bot{background:#fff;color:#32363a;align-self:flex-start;border-bottom-left-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.msg-sender{font-size:10px;opacity:.7;margin-bottom:3px}
+.chat-input-row{display:flex;gap:8px}
+.chat-input-row .form-control{flex:1}
+/* Quick actions */
+.action-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{padding:6px 14px;border-radius:20px;border:1px solid #0a6ed1;color:#0a6ed1;background:#fff;cursor:pointer;font-size:12px;transition:background .15s}
+.chip:hover{background:#e8f0fe}
+/* Notifications */
+#toast{position:fixed;bottom:24px;right:24px;background:#32363a;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:1000}
+#toast.show{opacity:1}
+/* Progress bar */
+.progress{background:#e5e5e5;border-radius:4px;height:8px;overflow:hidden}
+.progress-bar{height:100%;background:#0a6ed1;border-radius:4px;transition:width .3s}
+/* Responsive */
+@media(max-width:768px){#sidebar{width:56px}.nav-label{display:none}#sidebar-header .logo{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
 </head>
-<body class="sapUiBody" id="content"></body>
+<body>
+<div id="shell">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <span class="toggle" onclick="toggleSidebar()">☰</span>
+      <span class="logo">MAE Platform</span>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="icon">🏠</span><span class="nav-label">Dashboard</span></div>
+      <div class="nav-item" onclick="showPage('copilot',this)"><span class="icon">🤖</span><span class="nav-label">Operations Copilot</span></div>
+      <div class="nav-item" onclick="showPage('createJob',this)"><span class="icon">➕</span><span class="nav-label">Create Job</span></div>
+      <div class="nav-item" onclick="showPage('jobMonitor',this)"><span class="icon">📋</span><span class="nav-label">Job Monitor</span></div>
+      <div class="nav-item" onclick="showPage('failureAnalysis',this)"><span class="icon">⚠️</span><span class="nav-label">Failure Analysis</span></div>
+      <div class="nav-item" onclick="showPage('executive',this)"><span class="icon">📊</span><span class="nav-label">Executive Summary</span></div>
+      <div class="nav-item" onclick="showPage('insights',this)"><span class="icon">⚡</span><span class="nav-label">Platform Insights</span></div>
+    </nav>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+    <div id="topbar">
+      <h1>MAE Customer Data Operations Platform</h1>
+      <span class="spacer"></span>
+      <span style="font-size:13px;color:#6a7988">Demo Utilities Company Inc.</span>
+      <div class="avatar">DC</div>
+    </div>
+    <div id="content">
+
+      <!-- DASHBOARD -->
+      <div id="page-dashboard" class="page active">
+        <div class="page-title">Home Dashboard</div>
+        <div class="kpi-grid">
+          <div class="kpi-card green"><div class="kpi-value">87K</div><div class="kpi-label">Records Modernized</div><div class="kpi-sub">Target: 100,000</div></div>
+          <div class="kpi-card green"><div class="kpi-value">94.2%</div><div class="kpi-label">Success Rate</div><div class="kpi-sub">Last 30 days</div></div>
+          <div class="kpi-card"><div class="kpi-value">12</div><div class="kpi-label">Jobs Completed</div><div class="kpi-sub">All time</div></div>
+          <div class="kpi-card"><div class="kpi-value">340h</div><div class="kpi-label">Hours Saved</div><div class="kpi-sub">Estimated</div></div>
+          <div class="kpi-card green"><div class="kpi-value">1,842</div><div class="kpi-label">AI Recoveries</div><div class="kpi-sub">Auto-healed</div></div>
+          <div class="kpi-card green"><div class="kpi-value">$52K</div><div class="kpi-label">Cost Avoidance</div><div class="kpi-sub">Estimated</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">📋 Recent Jobs</div>
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead><tr><th>Batch ID</th><th>Type</th><th>Status</th><th>Success/Total</th><th>Created</th></tr></thead>
+              <tbody id="dashboard-jobs-body">
+                <tr><td colspan="5" style="text-align:center;color:#6a7988;padding:20px">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">⚡ Quick Actions</div>
+          <div class="panel-body" style="display:flex;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="showPage('createJob',document.querySelectorAll('.nav-item')[2])">➕ Create New Job</button>
+            <button class="btn btn-secondary" onclick="showPage('copilot',document.querySelectorAll('.nav-item')[1])">🤖 Open Copilot</button>
+            <button class="btn btn-secondary" onclick="showPage('jobMonitor',document.querySelectorAll('.nav-item')[3]);loadJobs()">📋 View Job Monitor</button>
+            <button class="btn btn-secondary" onclick="showPage('executive',document.querySelectorAll('.nav-item')[5])">📊 Executive Report</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- COPILOT -->
+      <div id="page-copilot" class="page">
+        <div class="page-title">🤖 DUCI Operations Copilot</div>
+        <div class="panel">
+          <div class="panel-header">Conversation</div>
+          <div class="panel-body">
+            <div id="chat-messages">
+              <div class="msg msg-bot"><div class="msg-sender">Copilot</div>Hello! I'm the DUCI Operations Copilot. I can help you create and monitor bulk data jobs, analyze failures, and generate reports. What would you like to do today?</div>
+            </div>
+            <div class="chat-input-row">
+              <input id="chat-input" class="form-control" placeholder="Ask me anything about DUCI bulk operations..." onkeydown="if(event.key==='Enter')sendMessage()"/>
+              <button class="btn btn-primary" onclick="sendMessage()">Send ➤</button>
+            </div>
+            <div class="action-chips">
+              <span class="chip" onclick="askCopilot('Show me active customers in Allentown with recent address changes')">🏘 Allentown customers</span>
+              <span class="chip" onclick="askCopilot('Create a MAILING_ADDRESS_UPDATE job for Allentown PA')">➕ Create address job</span>
+              <span class="chip" onclick="askCopilot('What is the current success rate and job status?')">📊 Current status</span>
+              <span class="chip" onclick="askCopilot('Generate executive summary for this month')">📋 Executive summary</span>
+              <span class="chip" onclick="askCopilot('Show me all failed records and root causes')">⚠️ Failure analysis</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CREATE JOB -->
+      <div id="page-createJob" class="page">
+        <div class="page-title">➕ Create Bulk Job</div>
+        <div class="panel" style="max-width:600px">
+          <div class="panel-header">Job Configuration</div>
+          <div class="panel-body">
+            <div class="form-row">
+              <label class="form-label">Job Type <span style="color:red">*</span></label>
+              <select id="job-type" class="form-control">
+                <option value="MAILING_ADDRESS_UPDATE">Mailing Address Update</option>
+                <option value="CONTRACT_ACCOUNT_UPDATE">Contract Account Update</option>
+                <option value="CUSTOMER_PREFERENCE_UPDATE">Customer Preference Update</option>
+                <option value="NOTIFICATION_REQUEST">Notification Request</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Description</label>
+              <input id="job-desc" class="form-control" placeholder="e.g. Allentown Q4 address campaign"/>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Contract Accounts (one per line, leave blank for demo)</label>
+              <textarea id="job-accounts" class="form-control" rows="5" placeholder="CA000001&#10;CA000002&#10;CA000003"></textarea>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Simulation Mode</label>
+              <div class="toggle-row">
+                <label class="toggle"><input type="checkbox" id="job-sim" checked/><span class="toggle-slider"></span></label>
+                <span id="sim-label" style="font-size:13px;color:#6a7988">ON — safe preview, no real changes</span>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="submitJob()" style="width:100%;justify-content:center">▶ Submit Job</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- JOB MONITOR -->
+      <div id="page-jobMonitor" class="page">
+        <div class="page-title">📋 Job Monitor</div>
+        <div class="panel">
+          <div class="panel-header">
+            Active &amp; Recent Jobs
+            <span class="spacer" style="flex:1"></span>
+            <button class="btn btn-secondary btn-sm" onclick="loadJobs()">🔄 Refresh</button>
+          </div>
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead><tr><th>Batch ID</th><th>Type</th><th>Status</th><th>Progress</th><th>Records</th><th>Created</th></tr></thead>
+              <tbody id="jobs-body"><tr><td colspan="6" style="text-align:center;color:#6a7988;padding:20px">Click Refresh to load jobs</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAILURE ANALYSIS -->
+      <div id="page-failureAnalysis" class="page">
+        <div class="page-title">⚠️ Failure Analysis</div>
+        <div class="panel">
+          <div class="panel-header">
+            Failed Records
+            <span style="flex:1"></span>
+            <button class="btn btn-secondary btn-sm" onclick="loadFailures()">🔄 Load Failures</button>
+          </div>
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead><tr><th>Contract Account</th><th>Error Message</th><th>Retry Attempts</th><th>Action</th></tr></thead>
+              <tbody id="failures-body"><tr><td colspan="4" style="text-align:center;color:#6a7988;padding:20px">Click "Load Failures" to fetch data</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXECUTIVE SUMMARY -->
+      <div id="page-executive" class="page">
+        <div class="page-title">📊 Executive Summary</div>
+        <div class="panel">
+          <div class="panel-header">DUCI MAE Platform — Monthly Report</div>
+          <div class="panel-body">
+            <div class="kpi-grid" style="margin-bottom:20px">
+              <div class="kpi-card green"><div class="kpi-value">87,420</div><div class="kpi-label">Records Modernized</div></div>
+              <div class="kpi-card green"><div class="kpi-value">94.2%</div><div class="kpi-label">Overall Success Rate</div></div>
+              <div class="kpi-card"><div class="kpi-value">12</div><div class="kpi-label">Jobs Completed</div></div>
+              <div class="kpi-card"><div class="kpi-value">340 hrs</div><div class="kpi-label">Hours Saved</div></div>
+              <div class="kpi-card green"><div class="kpi-value">$52,400</div><div class="kpi-label">Cost Avoidance</div></div>
+              <div class="kpi-card green"><div class="kpi-value">1,842</div><div class="kpi-label">AI Auto-Recoveries</div></div>
+            </div>
+            <div style="background:#f8f9fa;border-radius:8px;padding:20px;font-size:14px;line-height:1.8;color:#32363a">
+              <strong>Executive Narrative:</strong><br/>
+              In the current period, Demo Utilities Company Inc. successfully processed <strong>12 bulk data modernization campaigns</strong> covering Allentown, Bethlehem, and Easton service territories. The Mailing Address Update campaign achieved a <strong>94.2% first-pass success rate</strong> with 1,842 records automatically recovered by the AI retry framework. Estimated operational cost avoidance: <strong>$52,400</strong> vs. manual processing baseline. The platform is on track to complete the full 100,000-record modernization by end of Q4.
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">Jobs by Type</div>
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead><tr><th>Job Type</th><th>Jobs</th><th>Records</th><th>Success Rate</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>Mailing Address Update</td><td>5</td><td>42,100</td><td><span class="badge badge-success">96.1%</span></td><td><span class="badge badge-success">On Track</span></td></tr>
+                <tr><td>Contract Account Update</td><td>3</td><td>18,500</td><td><span class="badge badge-success">94.8%</span></td><td><span class="badge badge-success">On Track</span></td></tr>
+                <tr><td>Customer Preference Update</td><td>3</td><td>21,320</td><td><span class="badge badge-warning">91.2%</span></td><td><span class="badge badge-warning">Monitor</span></td></tr>
+                <tr><td>Notification Request</td><td>1</td><td>5,500</td><td><span class="badge badge-success">100%</span></td><td><span class="badge badge-success">Completed</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLATFORM INSIGHTS -->
+      <div id="page-insights" class="page">
+        <div class="page-title">⚡ Platform Insights</div>
+        <div class="panel">
+          <div class="panel-header">Throughput Benchmarks</div>
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead><tr><th>Batch Size</th><th>Mode</th><th>Duration</th><th>Throughput</th><th>Result</th></tr></thead>
+              <tbody>
+                <tr><td>10,000</td><td>Simulation</td><td>8s</td><td>1,250 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
+                <tr><td>50,000</td><td>Simulation</td><td>42s</td><td>1,190 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
+                <tr><td>100,000</td><td>Simulation</td><td>89s</td><td>1,123 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
+                <tr><td>10,000</td><td>Real</td><td>11s</td><td>909 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
+                <tr><td>50,000</td><td>Real</td><td>58s</td><td>862 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
+                <tr><td>100,000</td><td>Real</td><td>2m 3s</td><td>812 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">Architecture Overview</div>
+          <div class="panel-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+              <div style="background:#f8f9fa;padding:16px;border-radius:8px"><strong>🏗 Strategy Pattern</strong><br/><span style="font-size:13px;color:#6a7988">IBulkJobHandler with 4 specialized handlers per job type</span></div>
+              <div style="background:#f8f9fa;padding:16px;border-radius:8px"><strong>🏭 Factory Pattern</strong><br/><span style="font-size:13px;color:#6a7988">HandlerFactory with runtime registration</span></div>
+              <div style="background:#f8f9fa;padding:16px;border-radius:8px"><strong>🔄 Retry Framework</strong><br/><span style="font-size:13px;color:#6a7988">Exponential backoff: 1s / 2s / 4s, max 3 retries</span></div>
+              <div style="background:#f8f9fa;padding:16px;border-radius:8px"><strong>🗄 Batch Query</strong><br/><span style="font-size:13px;color:#6a7988">Chunked IN-clause SQL (500 records/chunk)</span></div>
+              <div style="background:#f8f9fa;padding:16px;border-radius:8px"><strong>📦 7-Step Pipeline</strong><br/><span style="font-size:13px;color:#6a7988">REQUEST → VALIDATING → LOADING → PROCESSING → VERIFYING → GENERATING → COMPLETED</span></div>
+              <div style="background:#f8f9fa;padding:16px;border-radius:8px"><strong>🤖 AI Recovery</strong><br/><span style="font-size:13px;color:#6a7988">Auto-heals failed records using pattern matching</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<div id="toast"></div>
+
+<script>
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(id, navEl) {
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  var page = document.getElementById('page-'+id);
+  if (page) page.classList.add('active');
+  if (navEl) navEl.classList.add('active');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, duration) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');}, duration||3000);
+}
+
+// ── Demo data ─────────────────────────────────────────────────────────────────
+var DEMO_JOBS = [
+  {BATCH_ID:'a1b2c3d4-0001', JOB_TYPE:'MAILING_ADDRESS_UPDATE',     STATUS:'COMPLETED',         TOTAL_ACCOUNTS:1842, SUCCESS_COUNT:1734, FAILED_COUNT:108,  CREATED_ON: new Date(Date.now()-3600000).toISOString()},
+  {BATCH_ID:'b2c3d4e5-0002', JOB_TYPE:'CONTRACT_ACCOUNT_UPDATE',    STATUS:'COMPLETED',         TOTAL_ACCOUNTS:500,  SUCCESS_COUNT:498,  FAILED_COUNT:2,    CREATED_ON: new Date(Date.now()-7200000).toISOString()},
+  {BATCH_ID:'c3d4e5f6-0003', JOB_TYPE:'CUSTOMER_PREFERENCE_UPDATE', STATUS:'IN_PROGRESS',       TOTAL_ACCOUNTS:2500, SUCCESS_COUNT:1200, FAILED_COUNT:0,    CREATED_ON: new Date(Date.now()-1800000).toISOString()},
+  {BATCH_ID:'d4e5f6a1-0004', JOB_TYPE:'NOTIFICATION_REQUEST',       STATUS:'COMPLETED',         TOTAL_ACCOUNTS:750,  SUCCESS_COUNT:750,  FAILED_COUNT:0,    CREATED_ON: new Date(Date.now()-14400000).toISOString()}
+];
+
+var DEMO_FAILURES = [
+  {CONTRACT_ACCOUNT:'CA-ERR-001', ERROR_MESSAGE:'Address validation failed — street not found in USPS database', RETRY_ATTEMPT:3},
+  {CONTRACT_ACCOUNT:'CA-ERR-002', ERROR_MESSAGE:'Downstream timeout — SAP IS-U unavailable during processing window', RETRY_ATTEMPT:2},
+  {CONTRACT_ACCOUNT:'CA-ERR-003', ERROR_MESSAGE:'Duplicate address record detected — manual review required', RETRY_ATTEMPT:1},
+  {CONTRACT_ACCOUNT:'CA-ERR-004', ERROR_MESSAGE:'Invalid zip code format for address: 180XX', RETRY_ATTEMPT:3},
+  {CONTRACT_ACCOUNT:'CA-ERR-005', ERROR_MESSAGE:'Customer account locked — pending legal hold', RETRY_ATTEMPT:0}
+];
+
+function statusBadge(s) {
+  var cls = s==='COMPLETED'?'badge-success':s==='FAILED'?'badge-error':s==='IN_PROGRESS'?'badge-info':'badge-warning';
+  return '<span class="badge '+cls+'">'+s.replace(/_/g,' ')+'</span>';
+}
+
+function timeAgo(iso) {
+  var diff = Math.floor((Date.now()-new Date(iso))/1000);
+  if (diff<60) return diff+'s ago';
+  if (diff<3600) return Math.floor(diff/60)+'m ago';
+  if (diff<86400) return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+
+// ── Dashboard jobs ────────────────────────────────────────────────────────────
+function renderDashboardJobs(jobs) {
+  var tbody = document.getElementById('dashboard-jobs-body');
+  tbody.innerHTML = jobs.slice(0,5).map(function(j){
+    var pct = j.TOTAL_ACCOUNTS ? Math.round(j.SUCCESS_COUNT/j.TOTAL_ACCOUNTS*100) : 0;
+    return '<tr><td style="font-family:monospace;font-size:12px">'+j.BATCH_ID.substring(0,14)+'...</td>'+
+      '<td>'+j.JOB_TYPE.replace(/_/g,' ')+'</td>'+
+      '<td>'+statusBadge(j.STATUS)+'</td>'+
+      '<td>'+j.SUCCESS_COUNT+' / '+j.TOTAL_ACCOUNTS+'</td>'+
+      '<td>'+timeAgo(j.CREATED_ON)+'</td></tr>';
+  }).join('');
+}
+
+// ── Job Monitor ───────────────────────────────────────────────────────────────
+function loadJobs() {
+  fetch('/odata/v4/BulkJobService/BatchJobs?$orderby=CREATED_ON%20desc&$top=20')
+    .then(function(r){return r.json();})
+    .then(function(d){renderJobs(d.value||[]);})
+    .catch(function(){renderJobs(DEMO_JOBS); toast('Showing demo data — backend not reachable');});
+}
+
+function renderJobs(jobs) {
+  renderDashboardJobs(jobs);
+  var tbody = document.getElementById('jobs-body');
+  if (!jobs.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:#6a7988;padding:20px">No jobs found</td></tr>'; return; }
+  tbody.innerHTML = jobs.map(function(j){
+    var pct = j.TOTAL_ACCOUNTS ? Math.round((j.PROCESSED_ACCOUNTS||j.SUCCESS_COUNT)/j.TOTAL_ACCOUNTS*100) : 0;
+    return '<tr>'+
+      '<td style="font-family:monospace;font-size:12px">'+j.BATCH_ID.substring(0,16)+'...</td>'+
+      '<td>'+j.JOB_TYPE.replace(/_/g,' ')+'</td>'+
+      '<td>'+statusBadge(j.STATUS)+'</td>'+
+      '<td><div class="progress" style="width:80px"><div class="progress-bar" style="width:'+pct+'%"></div></div><span style="font-size:11px;color:#6a7988;margin-left:6px">'+pct+'%</span></td>'+
+      '<td>'+(j.SUCCESS_COUNT||0)+' / '+(j.TOTAL_ACCOUNTS||0)+'</td>'+
+      '<td>'+timeAgo(j.CREATED_ON)+'</td></tr>';
+  }).join('');
+}
+
+// ── Failure Analysis ──────────────────────────────────────────────────────────
+function loadFailures() {
+  fetch('/odata/v4/BulkJobService/BatchJobFailureLogs?$top=50')
+    .then(function(r){return r.json();})
+    .then(function(d){renderFailures(d.value||[]);})
+    .catch(function(){renderFailures(DEMO_FAILURES); toast('Showing demo failures — backend not reachable');});
+}
+
+function renderFailures(failures) {
+  var tbody = document.getElementById('failures-body');
+  if (!failures.length) { tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#6a7988;padding:20px">No failures found ✅</td></tr>'; return; }
+  tbody.innerHTML = failures.map(function(f){
+    return '<tr>'+
+      '<td style="font-family:monospace">'+f.CONTRACT_ACCOUNT+'</td>'+
+      '<td>'+f.ERROR_MESSAGE+'</td>'+
+      '<td style="text-align:center">'+f.RETRY_ATTEMPT+' / 3</td>'+
+      '<td><button class="btn btn-secondary btn-sm" onclick="toast(\'Reprocess job queued for \'+\''+f.CONTRACT_ACCOUNT+'\')">↩ Reprocess</button></td></tr>';
+  }).join('');
+}
+
+// ── Submit Job ────────────────────────────────────────────────────────────────
+document.getElementById('job-sim').addEventListener('change', function(){
+  document.getElementById('sim-label').textContent = this.checked
+    ? 'ON — safe preview, no real changes'
+    : 'OFF — REAL changes will be applied';
+});
+
+function submitJob() {
+  var jobType = document.getElementById('job-type').value;
+  var desc = document.getElementById('job-desc').value || jobType + ' job';
+  var sim = document.getElementById('job-sim').checked;
+  var raw = document.getElementById('job-accounts').value;
+  var accounts = raw.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  if (!accounts.length) accounts = ['CA000001','CA000002','CA000003'];
+
+  var confirmed = confirm(
+    (sim ? '🔍 SIMULATION' : '⚠️ REAL EXECUTION') + '\n\n' +
+    'Job Type: ' + jobType.replace(/_/g,' ') + '\n' +
+    'Description: ' + desc + '\n' +
+    'Accounts: ' + accounts.length + '\n\n' +
+    (sim ? 'No real changes will be made.' : 'THIS WILL MODIFY REAL DATA. Are you sure?')
+  );
+  if (!confirmed) return;
+
+  var payload = {jobType:jobType, parameters:{contractAccounts:accounts}, simulationMode:sim, description:desc};
+
+  fetch('/api/bulk-jobs/'+jobType, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    toast('✅ Job submitted! Batch ID: '+(data.batchId||data.id||'N/A'));
+    showPage('jobMonitor', document.querySelectorAll('.nav-item')[3]);
+    setTimeout(loadJobs, 500);
+  }).catch(function(){
+    var fakeId = 'DEMO-'+Date.now().toString(36).toUpperCase();
+    toast('✅ Demo mode: Job submitted as '+fakeId);
+    DEMO_JOBS.unshift({BATCH_ID:fakeId+'-0000-0000-0000-'+fakeId, JOB_TYPE:jobType, STATUS:'IN_PROGRESS', TOTAL_ACCOUNTS:accounts.length, SUCCESS_COUNT:0, FAILED_COUNT:0, CREATED_ON:new Date().toISOString()});
+    showPage('jobMonitor', document.querySelectorAll('.nav-item')[3]);
+    setTimeout(function(){renderJobs(DEMO_JOBS);}, 200);
+  });
+}
+
+// ── Copilot ───────────────────────────────────────────────────────────────────
+function getCopilotReply(msg) {
+  var m = msg.toLowerCase();
+  if (m.includes('allentown'))    return '📍 I found approximately <strong>1,842 active customers</strong> in Allentown, PA with address changes in the last 90 days. Would you like me to prepare a <code>MAILING_ADDRESS_UPDATE</code> simulation job for your review? I will NOT execute it until you confirm.';
+  if (m.includes('create') || m.includes('job')) return '🛠 To create a bulk job I need: (1) Job Type, (2) Contract accounts or city filter, (3) Simulation mode? Navigate to <strong>Create Job</strong> or tell me the details and I\'ll configure it.';
+  if (m.includes('fail') || m.includes('error')) return '🔍 To analyze failures provide a Batch ID. I can identify error patterns, root causes, and prepare a reprocessing job. Navigate to <strong>Failure Analysis</strong> for details.';
+  if (m.includes('summary') || m.includes('report') || m.includes('executive')) return '📊 <strong>Monthly Summary:</strong><br>• 12 jobs completed<br>• 87,420 records modernized<br>• 94.2% success rate<br>• 340 hours saved<br>• $52,400 estimated cost avoidance<br>• 1,842 AI auto-recoveries';
+  if (m.includes('success') || m.includes('status') || m.includes('rate')) return '✅ Current platform status: <strong>94.2% success rate</strong> over last 30 days. 12 jobs completed, 4 in pipeline. 0 critical failures. All systems operational.';
+  return '👋 I\'m the DUCI Operations Copilot. I can help with:<br>• Creating and monitoring bulk data jobs<br>• Analyzing failures and root causes<br>• Generating executive reports<br>• Finding customers by city or criteria<br><br>What would you like to do?';
+}
+
+function addChatMessage(role, html) {
+  var div = document.createElement('div');
+  div.className = 'msg ' + (role==='user'?'msg-user':'msg-bot');
+  div.innerHTML = '<div class="msg-sender">'+(role==='user'?'You':'🤖 Copilot')+'</div>'+html;
+  var msgs = document.getElementById('chat-messages');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function askCopilot(text) {
+  document.getElementById('chat-input').value = text;
+  sendMessage();
+}
+
+function sendMessage() {
+  var input = document.getElementById('chat-input');
+  var msg = input.value.trim();
+  if (!msg) return;
+  addChatMessage('user', msg);
+  input.value = '';
+
+  // Try real backend first
+  fetch('/api/copilot', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})})
+    .then(function(r){return r.json();})
+    .then(function(d){ setTimeout(function(){addChatMessage('bot', d.response||d.message||getCopilotReply(msg));}, 400); })
+    .catch(function(){ setTimeout(function(){addChatMessage('bot', getCopilotReply(msg));}, 400); });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderDashboardJobs(DEMO_JOBS);
+loadJobs();
+</script>
+</body>
 </html>
