@@ -100,34 +100,39 @@ jobs:
 
       - name: CF Authenticate via token
         run: |
-          cf api "${{ env.CF_API_URL }}"
-          # Use oauth-token directly — avoids SSO/password issues
-          CF_HOME=$(mktemp -d)
-          export CF_HOME
-          mkdir -p "$CF_HOME/.cf"
-          cat > "$CF_HOME/.cf/config.json" <<EOF
+          mkdir -p ~/.cf
+          cat > ~/.cf/config.json << 'CFCONFIG'
           {
             "ConfigVersion": 3,
-            "Target": "${{ env.CF_API_URL }}",
+            "Target": "https://api.cf.us10.hana.ondemand.com",
             "APIVersion": "3.229.0",
             "AuthorizationEndpoint": "https://login.cf.us10.hana.ondemand.com",
             "DopplerEndPoint": "wss://doppler.cf.us10.hana.ondemand.com:443",
             "UaaEndpoint": "https://uaa.cf.us10.hana.ondemand.com",
             "RoutingAPIEndpoint": "https://api.cf.us10.hana.ondemand.com/routing",
-            "AccessToken": "${{ secrets.CF_ACCESS_TOKEN }}",
+            "AccessToken": "PLACEHOLDER_TOKEN",
             "RefreshToken": "",
-            "OrganizationFields": { "GUID": "", "Name": "${{ env.CF_ORG }}" },
-            "SpaceFields": { "GUID": "", "Name": "${{ env.CF_SPACE }}" },
+            "OrganizationFields": {"GUID": "", "Name": "NA_GDH_ai-americasdelivery"},
+            "SpaceFields": {"GUID": "", "Name": "AIspace"},
             "SSLDisabled": false,
             "AsyncTimeout": 0,
             "ColorEnabled": "",
             "Locale": "",
-            "PluginRepos": [{"Name": "CF-Community","URL": "https://plugins.cloudfoundry.org"}],
+            "PluginRepos": [{"Name":"CF-Community","URL":"https://plugins.cloudfoundry.org"}],
             "MinCLIVersion": "",
             "MinRecommendedCLIVersion": ""
           }
-          EOF
-          echo "CF_HOME=$CF_HOME" >> $GITHUB_ENV
+          CFCONFIG
+          # Inject the real token (avoids heredoc expansion issues with JWT)
+          python3 -c "
+          import json, sys
+          with open('/root/.cf/config.json') as f:
+              cfg = json.load(f)
+          cfg['AccessToken'] = '${{ secrets.CF_ACCESS_TOKEN }}'
+          with open('/root/.cf/config.json', 'w') as f:
+              json.dump(cfg, f)
+          print('Token injected')
+          "
           cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
 
       - name: Deploy MTA
