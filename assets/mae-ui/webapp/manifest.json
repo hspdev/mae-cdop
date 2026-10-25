@@ -1,0 +1,106 @@
+{
+  "_version": "1.58.0",
+  "sap.app": {
+    "id": "com.duci.mae.cdop",
+    "type": "application",
+    "title": "MAE Customer Data Operations Platform",
+    "description": "MAE Autonomous Customer Data Operations Platform for Demo Utilities Company Inc.",
+    "applicationVersion": { "version": "1.0.0" },
+    "dataSources": {
+      "BulkJobService": {
+        "uri": "/odata/v4/BulkJobService/",
+        "type": "OData",
+        "settings": { "odataVersion": "4.0" }
+      },
+      "CopilotService": {
+        "uri": "/odata/v4/CopilotService/",
+        "type": "OData",
+        "settings": { "odataVersion": "4.0" }
+      },
+      "BulkJobAPI": {
+        "uri": "/api/",
+        "type": "JSON"
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": false
+    }
+  },
+  "sap.fiori": {
+    "registrationIds": ["F0001"],
+    "archeType": "transactional"
+  },
+  "sap.ui5": {
+    "rootView": {
+      "viewName": "com.duci.mae.cdop.view.App",
+      "type": "XML",
+      "async": true,
+      "id": "app"
+    },
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": {
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.ui.layout": {},
+        "sap.f": {},
+        "sap.tnt": {},
+        "sap.ui.table": {}
+      }
+    },
+    "models": {
+      "": {
+        "dataSource": "BulkJobService",
+        "preload": true,
+        "settings": {
+          "autoExpandSelect": true,
+          "operationMode": "Server",
+          "synchronizationMode": "None"
+        }
+      },
+      "copilot": {
+        "dataSource": "CopilotService"
+      },
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "settings": {
+          "bundleName": "com.duci.mae.cdop.i18n.i18n"
+        }
+      }
+    },
+    "routing": {
+      "config": {
+        "routerClass": "sap.m.routing.Router",
+        "type": "JSON",
+        "viewType": "XML",
+        "path": "com.duci.mae.cdop.view",
+        "controlId": "appNav",
+        "controlAggregation": "pages",
+        "async": true
+      },
+      "routes": [
+        { "pattern": "",            "name": "dashboard",       "target": "dashboard" },
+        { "pattern": "copilot",     "name": "copilot",         "target": "copilot" },
+        { "pattern": "create-job",  "name": "createJob",       "target": "createJob" },
+        { "pattern": "jobs",        "name": "jobMonitor",      "target": "jobMonitor" },
+        { "pattern": "jobs/:batchId/failures", "name": "failureAnalysis", "target": "failureAnalysis" },
+        { "pattern": "executive",   "name": "executiveSummary","target": "executiveSummary" },
+        { "pattern": "insights",    "name": "platformInsights","target": "platformInsights" }
+      ],
+      "targets": {
+        "dashboard":        { "id": "dashboard",        "name": "Dashboard" },
+        "copilot":          { "id": "copilot",          "name": "Copilot" },
+        "createJob":        { "id": "createJob",        "name": "CreateJob" },
+        "jobMonitor":       { "id": "jobMonitor",       "name": "JobMonitor" },
+        "failureAnalysis":  { "id": "failureAnalysis",  "name": "FailureAnalysis" },
+        "executiveSummary": { "id": "executiveSummary", "name": "ExecutiveSummary" },
+        "platformInsights": { "id": "platformInsights", "name": "PlatformInsights" }
+      }
+    }
+  }
+}
