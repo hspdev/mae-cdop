@@ -1,0 +1,190 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.Dashboard"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:f="sap.f"
+  xmlns:l="sap.ui.layout"
+  xmlns:core="sap.ui.core"
+  displayBlock="true">
+
+  <Page title="Home Dashboard" showNavButton="false" backgroundDesign="List">
+    <customHeader>
+      <Bar>
+        <contentLeft>
+          <Title text="DUCI Operations Dashboard" level="H3"/>
+        </contentLeft>
+        <contentRight>
+          <Button text="Refresh" icon="sap-icon://refresh" press=".onRefresh"/>
+          <Button text="New Job" type="Emphasized" icon="sap-icon://add" press=".onCreateJob"/>
+        </contentRight>
+      </Bar>
+    </customHeader>
+
+    <content>
+      <!-- Hero KPI Banner -->
+      <f:DynamicPage id="dynamicPage" headerExpanded="true" toggleHeaderOnTitleClick="true">
+        <f:title>
+          <f:DynamicPageTitle>
+            <f:heading>
+              <Title text="Customer Records Modernized" level="H2"/>
+            </f:heading>
+            <f:expandedContent>
+              <Text text="Demo Utilities Company Inc. — MAE Bulk Job Processing Platform"/>
+            </f:expandedContent>
+          </f:DynamicPageTitle>
+        </f:title>
+
+        <f:header>
+          <f:DynamicPageHeader pinnable="true">
+            <l:Grid defaultSpan="XL2 L4 M6 S12" class="sapUiSmallMargin">
+              <!-- Hero KPI -->
+              <GenericTile
+                id="kpiRecordsModernized"
+                header="Customer Records Modernized"
+                subheader="All Time"
+                press=".onKpiPress"
+                class="sapUiTinyMarginEnd">
+                <TileContent unit="Records" footer="Target: 100,000">
+                  <NumericContent
+                    value="{dashboard>/kpi/recordsModernized}"
+                    valueColor="Good"
+                    scale="K"
+                    icon="sap-icon://customer"/>
+                </TileContent>
+              </GenericTile>
+
+              <!-- Success Rate -->
+              <GenericTile header="Success Rate" subheader="Last 30 Days" press=".onKpiPress">
+                <TileContent unit="%" footer="Target: ≥99%">
+                  <NumericContent
+                    value="{dashboard>/kpi/successRate}"
+                    valueColor="{= ${dashboard>/kpi/successRate} >= 99 ? 'Good' : ${dashboard>/kpi/successRate} >= 95 ? 'Critical' : 'Error'}"
+                    icon="sap-icon://accept"/>
+                </TileContent>
+              </GenericTile>
+
+              <!-- Jobs Completed -->
+              <GenericTile header="Jobs Completed" subheader="Last 30 Days">
+                <TileContent unit="Jobs" footer="{dashboard>/kpi/failedJobs} failed">
+                  <NumericContent
+                    value="{dashboard>/kpi/jobsCompleted}"
+                    valueColor="Good"
+                    icon="sap-icon://task"/>
+                </TileContent>
+              </GenericTile>
+
+              <!-- Hours Saved -->
+              <GenericTile header="Hours Saved" subheader="vs Manual Processing">
+                <TileContent unit="Hrs" footer="Automation benefit">
+                  <NumericContent
+                    value="{dashboard>/kpi/hoursSaved}"
+                    valueColor="Good"
+                    icon="sap-icon://time-entry-request"/>
+                </TileContent>
+              </GenericTile>
+
+              <!-- AI Recoveries -->
+              <GenericTile header="AI Recoveries" subheader="Copilot-Assisted">
+                <TileContent unit="Records" footer="AI remediation">
+                  <NumericContent
+                    value="{dashboard>/kpi/aiRecoveries}"
+                    valueColor="Good"
+                    icon="sap-icon://da"/>
+                </TileContent>
+              </GenericTile>
+
+              <!-- Cost Avoidance -->
+              <GenericTile header="Cost Avoidance" subheader="Estimated">
+                <TileContent unit="USD" footer="Manual effort cost">
+                  <NumericContent
+                    value="{dashboard>/kpi/costAvoidance}"
+                    scale="K"
+                    valueColor="Good"
+                    icon="sap-icon://money-bills"/>
+                </TileContent>
+              </GenericTile>
+            </l:Grid>
+          </f:DynamicPageHeader>
+        </f:header>
+
+        <f:content>
+          <l:Grid defaultSpan="XL6 L6 M12 S12" class="sapUiSmallMargin">
+
+            <!-- Active Jobs Panel -->
+            <Panel headerText="Active Jobs" expandable="true" expanded="true">
+              <List
+                id="activeJobsList"
+                items="{path: '/BatchJobs', filters: [{path: 'STATUS', operator: 'EQ', value1: 'IN_PROGRESS'}]}"
+                noDataText="No active jobs"
+                growing="true"
+                growingThreshold="5">
+                <ObjectListItem
+                  title="{JOB_TYPE}"
+                  number="{= ${PROCESSED_ACCOUNTS} + '/' + ${TOTAL_ACCOUNTS}}"
+                  numberUnit="Accounts"
+                  press=".onJobPress"
+                  type="Navigation">
+                  <statuses>
+                    <ObjectStatus text="{STATUS}" state="{= ${STATUS} === 'IN_PROGRESS' ? 'Warning' : 'None'}"/>
+                    <ObjectStatus text="{CURRENT_STEP}"/>
+                  </statuses>
+                  <attributes>
+                    <ObjectAttribute title="Progress" text="{= Math.round(${PROCESSED_ACCOUNTS} / Math.max(${TOTAL_ACCOUNTS},1) * 100) + '%'}"/>
+                    <ObjectAttribute title="Batch ID" text="{BATCH_ID}"/>
+                  </attributes>
+                </ObjectListItem>
+              </List>
+            </Panel>
+
+            <!-- Recent Jobs Panel -->
+            <Panel headerText="Recent Completed Jobs" expandable="true" expanded="true">
+              <List
+                id="recentJobsList"
+                items="{path: '/BatchJobs', sorter: {path: 'COMPLETED_ON', descending: true}}"
+                noDataText="No completed jobs"
+                growing="true"
+                growingThreshold="5">
+                <ObjectListItem
+                  title="{JOB_TYPE}"
+                  number="{SUCCESS_COUNT}"
+                  numberUnit="Updated"
+                  press=".onJobPress"
+                  type="Navigation">
+                  <statuses>
+                    <ObjectStatus
+                      text="{STATUS}"
+                      state="{= ${STATUS} === 'COMPLETED' ? 'Success' : ${STATUS} === 'PARTIALLY_COMPLETED' ? 'Warning' : 'Error'}"/>
+                  </statuses>
+                  <attributes>
+                    <ObjectAttribute title="Success Rate" text="{= (${SUCCESS_COUNT} / Math.max(${TOTAL_ACCOUNTS},1) * 100).toFixed(1) + '%'}"/>
+                    <ObjectAttribute title="Duration" text="{= ${DURATION_SECONDS} + 's'}"/>
+                    <ObjectAttribute title="Completed" text="{COMPLETED_ON}"/>
+                  </attributes>
+                </ObjectListItem>
+              </List>
+            </Panel>
+
+          </l:Grid>
+
+          <!-- DUCI Demo Scenario Quick Launch -->
+          <Panel headerText="DUCI Demo Scenario" class="sapUiSmallMargin" expandable="true" expanded="true">
+            <Toolbar>
+              <Text text="Allentown Mailing Address Campaign — Find all active customers in Allentown with address changes in the last 90 days"/>
+              <ToolbarSpacer/>
+              <Button
+                text="Launch Demo"
+                type="Emphasized"
+                icon="sap-icon://play"
+                press=".onLaunchDemo"/>
+              <Button
+                text="Simulation Only"
+                icon="sap-icon://simulate"
+                press=".onLaunchDemoSimulation"/>
+            </Toolbar>
+          </Panel>
+
+        </f:content>
+      </f:DynamicPage>
+    </content>
+  </Page>
+</mvc:View>
