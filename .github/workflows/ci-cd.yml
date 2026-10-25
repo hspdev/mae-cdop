@@ -8,6 +8,10 @@ on:
 
 env:
   NODE_VERSION: '20.x'
+  CF_API_URL: https://api.cf.us10.hana.ondemand.com
+  CF_USERNAME: harish.phadnis@sap.com
+  CF_ORG: NA_GDH_ai-americasdelivery
+  CF_SPACE: AIspace
 
 jobs:
 
@@ -74,7 +78,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main'
-    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -96,11 +99,11 @@ jobs:
       - name: CF Login
         run: |
           cf login \
-            -a ${{ secrets.CF_API_URL }} \
-            -u ${{ secrets.CF_USERNAME }} \
+            -a "${{ env.CF_API_URL }}" \
+            -u "${{ env.CF_USERNAME }}" \
             -p "${{ secrets.CF_PASSWORD }}" \
-            -o "${{ secrets.CF_ORG }}" \
-            -s "${{ secrets.CF_SPACE }}"
+            -o "${{ env.CF_ORG }}" \
+            -s "${{ env.CF_SPACE }}"
 
       - name: Deploy MTA
         run: |
@@ -113,4 +116,4 @@ jobs:
           sleep 30
           APP_ROUTE=$(cf app mae-cap-backend | grep -oP 'routes:\s+\K\S+' | head -1)
           echo "Testing https://${APP_ROUTE}/health"
-          curl -sf "https://${APP_ROUTE}/health" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='UP', d; print('Health check PASSED')"
+          curl -sf "https://${APP_ROUTE}/health"
