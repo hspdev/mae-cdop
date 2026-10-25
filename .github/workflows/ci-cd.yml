@@ -118,7 +118,24 @@ jobs:
           EOF
           node /tmp/write-cf-config.js
           cat "$HOME/.cf/config.json" | python3 -c "import json,sys; c=json.load(sys.stdin); print('Target OK:', c['Target']); print('Token OK:', len(c.get('AccessToken',''))>10)"
-          cf target -o "$CF_ORG" -s "$CF_SPACE"
+          # Debug: show where CF CLI looks for config
+          echo "HOME=$HOME"
+          echo "CF_HOME=${CF_HOME:-not set}"
+          ls -la "$HOME/.cf/"
+          # CF CLI v7 on some systems uses XDG_CONFIG_HOME
+          echo "XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-not set}"
+          # Try strace to see what files CF reads
+          cf target 2>&1 | head -5 || true
+          # Force CF_HOME to our directory
+          export CF_HOME="$HOME"
+          echo "CF_HOME set to: $CF_HOME"
+          CF_HOME="$HOME" cf target 2>&1 | head -5 || true
+          # Try running cf with the config path shown explicitly
+          ls -la /usr/local/bin/cf
+          file /usr/local/bin/cf
+          # What does cf env show?
+          CF_HOME="$HOME" cf config --locale EN_US 2>&1 || true
+          CF_HOME="$HOME" cf target -o "$CF_ORG" -s "$CF_SPACE"
 
       - name: Deploy MTA
         env:
