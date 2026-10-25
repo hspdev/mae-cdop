@@ -10,20 +10,24 @@ build-parameters:
   before-all:
     - builder: custom
       commands:
-        - npm --prefix assets/mae-cap-backend ci --legacy-peer-deps --ignore-scripts
+        - npm --prefix assets/mae-cap-backend install --legacy-peer-deps --ignore-scripts
         - node assets/mae-cap-backend/scripts/apply-shim.js
-        - npm --prefix assets/mae-cap-backend run build
+        - node assets/mae-cap-backend/node_modules/@sap/cds-dk/bin/cds.js build --project assets/mae-cap-backend --production
+        - mkdir -p assets/mae-cap-backend/gen/srv/patches
+        - cp assets/mae-cap-backend/patches/better-sqlite3-sqljs-shim.js assets/mae-cap-backend/gen/srv/patches/
+        - mkdir -p assets/mae-cap-backend/gen/srv/scripts
+        - cp assets/mae-cap-backend/scripts/apply-shim.js assets/mae-cap-backend/gen/srv/scripts/
+        - cp assets/mae-cap-backend/scripts/deploy-db.js assets/mae-cap-backend/gen/srv/scripts/
 
 modules:
 
   # ── CAP Backend (SQLite, no HANA required) ─────────────────────────────────
   - name: mae-cap-backend
     type: nodejs
-    path: assets/mae-cap-backend
+    path: assets/mae-cap-backend/gen/srv
     build-parameters:
       builder: npm
-      build-result: gen/srv
-      ignore: [".env", "node_modules/", "test/", "*.db"]
+      ignore: [".env", "test/", "*.db"]
     parameters:
       instances: 1
       memory: 512M
