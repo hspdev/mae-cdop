@@ -99,10 +99,13 @@ jobs:
         run: cf install-plugin multiapps -f
 
       - name: CF Authenticate via token
+        env:
+          CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
-          mkdir -p ~/.cf
-          cat > ~/.cf/config.json << 'CFCONFIG'
-          {
+          mkdir -p "$HOME/.cf"
+          python3 - <<'PYEOF'
+          import json, os
+          cfg = {
             "ConfigVersion": 3,
             "Target": "https://api.cf.us10.hana.ondemand.com",
             "APIVersion": "3.229.0",
@@ -110,29 +113,23 @@ jobs:
             "DopplerEndPoint": "wss://doppler.cf.us10.hana.ondemand.com:443",
             "UaaEndpoint": "https://uaa.cf.us10.hana.ondemand.com",
             "RoutingAPIEndpoint": "https://api.cf.us10.hana.ondemand.com/routing",
-            "AccessToken": "PLACEHOLDER_TOKEN",
+            "AccessToken": os.environ["CF_ACCESS_TOKEN"],
             "RefreshToken": "",
             "OrganizationFields": {"GUID": "", "Name": "NA_GDH_ai-americasdelivery"},
             "SpaceFields": {"GUID": "", "Name": "AIspace"},
-            "SSLDisabled": false,
+            "SSLDisabled": False,
             "AsyncTimeout": 0,
             "ColorEnabled": "",
             "Locale": "",
-            "PluginRepos": [{"Name":"CF-Community","URL":"https://plugins.cloudfoundry.org"}],
+            "PluginRepos": [{"Name": "CF-Community", "URL": "https://plugins.cloudfoundry.org"}],
             "MinCLIVersion": "",
             "MinRecommendedCLIVersion": ""
           }
-          CFCONFIG
-          # Inject the real token (avoids heredoc expansion issues with JWT)
-          python3 -c "
-          import json, sys
-          with open('/root/.cf/config.json') as f:
-              cfg = json.load(f)
-          cfg['AccessToken'] = '${{ secrets.CF_ACCESS_TOKEN }}'
-          with open('/root/.cf/config.json', 'w') as f:
+          path = os.path.join(os.environ["HOME"], ".cf", "config.json")
+          with open(path, "w") as f:
               json.dump(cfg, f)
-          print('Token injected')
-          "
+          print("CF config written to", path)
+          PYEOF
           cf target -o "${{ env.CF_ORG }}" -s "${{ env.CF_SPACE }}"
 
       - name: Deploy MTA
