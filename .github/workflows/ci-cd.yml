@@ -82,61 +82,53 @@ jobs:
         env:
           CF_REFRESH_TOKEN: ${{ secrets.CF_REFRESH_TOKEN }}
         run: |
-          RESPONSE=$(curl -s -X POST \
-            "${{ env.CF_UAA }}/oauth/token" \
+          RESPONSE=$(curl -s -X POST "${CF_UAA}/oauth/token" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -H "Authorization: Basic Y2Y6" \
             -d "grant_type=refresh_token&refresh_token=${CF_REFRESH_TOKEN}")
           ACCESS_TOKEN=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('access_token','ERROR: '+str(d)))")
           if [[ "$ACCESS_TOKEN" == ERROR* ]]; then echo "Token refresh failed: $ACCESS_TOKEN"; exit 1; fi
-          echo "✅ Access token obtained (${#ACCESS_TOKEN} chars)"
-          cf api ${{ env.CF_API }}
-          cat > /tmp/inject-token.js << 'JSEOF'
-const fs=require('fs'),path=require('path'),os=require('os');
-const raw=process.env.CF_NEW_TOKEN||'';
-if(!raw){console.error('CF_NEW_TOKEN not set');process.exit(1);}
-const tok=raw.startsWith('bearer ')?raw:'bearer '+raw;
-const xdg=process.env.XDG_CONFIG_HOME||path.join(os.homedir(),'.config');
-[path.join(xdg,'cf','config.json'),path.join(os.homedir(),'.cf','config.json')].forEach(p=>{
-  try{
-    fs.mkdirSync(path.dirname(p),{recursive:true});
-    const cfg=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):{ConfigVersion:3};
-    cfg.Target='https://api.cf.us10.hana.ondemand.com';
-    cfg.AccessToken=tok;
-    fs.writeFileSync(p,JSON.stringify(cfg,null,2));
-    console.log('Written:',p,'len='+tok.length);
-  }catch(e){console.log('Skip',p,e.message);}
-});
-JSEOF
-          CF_NEW_TOKEN="$ACCESS_TOKEN" node /tmp/inject-token.js
-          cf target -o "$CF_ORG" -s "$CF_SPACE"
-          echo "✅ CF login successful"
+          echo "Access token obtained (${#ACCESS_TOKEN} chars)"
+          cf api ${CF_API}
+          node -e "
+            var fs=require('fs'),path=require('path'),os=require('os');
+            var raw=process.env.TOK||'';
+            var tok=raw.startsWith('bearer ')?raw:'bearer '+raw;
+            var xdg=process.env.XDG_CONFIG_HOME||path.join(os.homedir(),'.config');
+            [path.join(xdg,'cf','config.json'),path.join(os.homedir(),'.cf','config.json')].forEach(function(p){
+              try{
+                fs.mkdirSync(path.dirname(p),{recursive:true});
+                var cfg=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):{ConfigVersion:3};
+                cfg.Target='https://api.cf.us10.hana.ondemand.com';
+                cfg.AccessToken=tok;
+                fs.writeFileSync(p,JSON.stringify(cfg));
+                console.log('Written',p,'len='+tok.length);
+              }catch(e){console.log('Skip',p,e.message);}
+            });
+          " TOK="$ACCESS_TOKEN"
+          cf target -o "${CF_ORG}" -s "${CF_SPACE}"
+          echo "CF login successful"
 
       - name: Abort conflicting MTA processes
-        run: |
-          # Abort any in-progress MTA deployments for this MTA ID
-          cf deploy -a abort -f 2>&1 | grep -v "No operation" || true
-          sleep 5
+        run: cf deploy -a abort -f 2>&1 | head -3 || true
 
       - name: Deploy MTA
         run: |
           MTAR=$(ls mta_archives/*.mtar | head -1)
-          echo "Deploying: $MTAR"
+          echo "Deploying $MTAR"
           cf deploy "$MTAR" -f --retries 2
 
-      - name: App logs (always)
+      - name: App logs
         if: always()
         run: |
-          echo "=== App Status ==="
           cf apps 2>&1 || true
-          echo "=== mae-cap-backend recent logs ==="
-          cf logs mae-cap-backend --recent 2>&1 | grep -E "OUT|ERR" | tail -40 || true
+          cf logs mae-cap-backend --recent 2>&1 | grep -E "OUT|ERR" | tail -30 || true
 
       - name: Smoke test
         run: |
           APP_ROUTE=$(cf app mae-cap-backend | grep -oP 'routes:\s+\K\S+' | head -1 || echo "")
           if [ -n "$APP_ROUTE" ]; then
-            curl -sf "https://${APP_ROUTE}/health" && echo "✅ LIVE: https://${APP_ROUTE}"
+            curl -sf "https://${APP_ROUTE}/health" && echo "LIVE at https://${APP_ROUTE}"
           else
             cf apps
           fi
