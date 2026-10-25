@@ -102,23 +102,25 @@ jobs:
           # Set CF API endpoint
           cf api ${{ env.CF_API }}
 
-          # Inject fresh token into XDG config (where CF CLI v7 reads on this runner)
-          # CF CLI expects "bearer <jwt>" format in AccessToken field
-          node -e "
-            const fs=require('fs'),path=require('path'),os=require('os');
-            const raw=process.env.ACCESS_TOKEN;
-            const tok=raw.startsWith('bearer ')?raw:'bearer '+raw;
-            const xdg=process.env.XDG_CONFIG_HOME||path.join(os.homedir(),'.config');
-            [path.join(xdg,'cf','config.json'), path.join(os.homedir(),'.cf','config.json')].forEach(p=>{
-              try {
-                fs.mkdirSync(path.dirname(p),{recursive:true});
-                const cfg=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):{ConfigVersion:3,Target:'https://api.cf.us10.hana.ondemand.com'};
-                cfg.AccessToken=tok;
-                fs.writeFileSync(p,JSON.stringify(cfg,null,2));
-                console.log('Token written to:',p);
-              } catch(e){console.log('Skip',p,e.message);}
-            });
-          " ACCESS_TOKEN="$ACCESS_TOKEN"
+          # Inject fresh token into XDG config — use a temp file to avoid env passing issues
+          cat > /tmp/inject-token.js << 'JSEOF'
+          const fs=require('fs'),path=require('path'),os=require('os');
+          const raw=process.env.CF_NEW_TOKEN||'';
+          if(!raw){console.error('CF_NEW_TOKEN not set');process.exit(1);}
+          const tok=raw.startsWith('bearer ')?raw:'bearer '+raw;
+          const xdg=process.env.XDG_CONFIG_HOME||path.join(os.homedir(),'.config');
+          [path.join(xdg,'cf','config.json'),path.join(os.homedir(),'.cf','config.json')].forEach(p=>{
+            try{
+              fs.mkdirSync(path.dirname(p),{recursive:true});
+              const cfg=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):{ConfigVersion:3};
+              cfg.Target='https://api.cf.us10.hana.ondemand.com';
+              cfg.AccessToken=tok;
+              fs.writeFileSync(p,JSON.stringify(cfg,null,2));
+              console.log('Token written to:',p,'len='+tok.length);
+            }catch(e){console.log('Skip',p,e.message);}
+          });
+          JSEOF
+          CF_NEW_TOKEN="$ACCESS_TOKEN" node /tmp/inject-token.js
 
           cf target -o "$CF_ORG" -s "$CF_SPACE"
           echo "✅ CF login successful"
