@@ -847,6 +847,8 @@ function brExportCSV() {
   a.href = url; a.download = 'bulk-read-' + Date.now() + '.csv'; a.click();
   URL.revokeObjectURL(url);
 }
+// ── Sidebar toggle ────────────────────────────────────────────────────────────
+function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('collapsed');
 }
 
