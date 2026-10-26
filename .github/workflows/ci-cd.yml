@@ -69,10 +69,10 @@ jobs:
           name: mta-archive
           path: mta_archives/
 
-      - name: Install CF CLI v7
+      - name: Install CF CLI v8
         run: |
-          curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v7&source=github" | tar -zx
-          sudo mv cf7 /usr/local/bin/cf
+          curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" | tar -zx
+          sudo mv cf /usr/local/bin/cf
           cf version
 
       - name: Install MTA plugin
@@ -82,32 +82,36 @@ jobs:
         env:
           CF_REFRESH_TOKEN: ${{ secrets.CF_REFRESH_TOKEN }}
         run: |
+          cf api ${CF_API}
+          # Exchange refresh token for access token via UAA
           RESPONSE=$(curl -s -X POST "${CF_UAA}/oauth/token" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -H "Authorization: Basic Y2Y6" \
             -d "grant_type=refresh_token&refresh_token=${CF_REFRESH_TOKEN}")
           ACCESS_TOKEN=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('access_token','ERROR: '+str(d)))")
+          REFRESH_TOKEN=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('refresh_token',''))")
           if [[ "$ACCESS_TOKEN" == ERROR* ]]; then echo "Token refresh failed: $ACCESS_TOKEN"; exit 1; fi
           echo "Access token obtained (${#ACCESS_TOKEN} chars)"
-          cf api ${CF_API}
-          export CF_NEW_TOKEN="$ACCESS_TOKEN"
-          node -e "
-            var fs=require('fs'),path=require('path'),os=require('os');
-            var raw=process.env.CF_NEW_TOKEN||'';
-            var tok=raw.startsWith('bearer ')?raw:'bearer '+raw;
-            console.log('Token raw length:',raw.length,'bearer length:',tok.length);
-            var xdg=process.env.XDG_CONFIG_HOME||path.join(os.homedir(),'.config');
-            [path.join(xdg,'cf','config.json'),path.join(os.homedir(),'.cf','config.json')].forEach(function(p){
-              try{
-                fs.mkdirSync(path.dirname(p),{recursive:true});
-                var cfg=fs.existsSync(p)?JSON.parse(fs.readFileSync(p,'utf8')):{ConfigVersion:3};
-                cfg.Target='https://api.cf.us10.hana.ondemand.com';
-                cfg.AccessToken=tok;
-                fs.writeFileSync(p,JSON.stringify(cfg));
-                console.log('Written',p,'len='+tok.length);
-              }catch(e){console.log('Skip',p,e.message);}
-            });
-          "
+          # Write tokens into CF config directly
+          mkdir -p ~/.cf
+          cat > ~/.cf/config.json <<EOF
+          {
+            "ConfigVersion": 3,
+            "Target": "https://api.cf.us10.hana.ondemand.com",
+            "APIVersion": "3.229.0",
+            "AuthorizationEndpoint": "https://login.cf.us10.hana.ondemand.com",
+            "UaaEndpoint": "https://uaa.cf.us10.hana.ondemand.com",
+            "AccessToken": "bearer ${ACCESS_TOKEN}",
+            "RefreshToken": "${REFRESH_TOKEN}",
+            "OrganizationFields": {"GUID": "", "Name": "${CF_ORG}"},
+            "SpaceFields": {"GUID": "", "Name": "${CF_SPACE}"},
+            "SSLDisabled": false,
+            "Locale": "",
+            "PluginRepos": [],
+            "MinCLIVersion": "",
+            "MinRecommendedCLIVersion": ""
+          }
+          EOF
           cf target -o "${CF_ORG}" -s "${CF_SPACE}"
           echo "CF login successful"
 
