@@ -83,7 +83,9 @@ jobs:
         env:
           CF_REFRESH_TOKEN: ${{ secrets.CF_REFRESH_TOKEN }}
         run: |
-          # Exchange refresh token for new access+refresh tokens via UAA
+          # Step 1: Set API endpoint so CF creates a valid config with Target field
+          /usr/local/bin/cf api "${CF_API}"
+          # Step 2: Exchange refresh token for new tokens
           RESPONSE=$(curl -s -X POST "${CF_UAA}/oauth/token" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -H "Authorization: Basic Y2Y6" \
@@ -92,10 +94,10 @@ jobs:
           NEW_REFRESH=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('refresh_token',''))")
           if [[ "$ACCESS_TOKEN" == ERROR* ]]; then echo "Token refresh failed: $ACCESS_TOKEN"; exit 1; fi
           echo "Access token obtained (${#ACCESS_TOKEN} chars)"
-          # Write CF config.json via python3 one-liner — no heredoc, no multi-line issues
-          mkdir -p ~/.cf
-          AT="$ACCESS_TOKEN" RT="$NEW_REFRESH" ORG="${CF_ORG}" SPACE="${CF_SPACE}" python3 -c "import json,os; cfg={'ConfigVersion':3,'Target':'https://api.cf.us10.hana.ondemand.com','APIVersion':'3.229.0','AuthorizationEndpoint':'https://login.cf.us10.hana.ondemand.com','UaaEndpoint':'https://uaa.cf.us10.hana.ondemand.com','AccessToken':'bearer '+os.environ['AT'],'RefreshToken':os.environ['RT'],'OrganizationFields':{'GUID':'','Name':os.environ['ORG']},'SpaceFields':{'GUID':'','Name':os.environ['SPACE']},'SSLDisabled':False,'Locale':'','PluginRepos':[],'MinCLIVersion':'','MinRecommendedCLIVersion':''}; json.dump(cfg,open(os.path.expanduser('~/.cf/config.json'),'w')); print('CF config written')"
+          # Step 3: Patch tokens into the config that cf api already created (Target already set)
+          AT="$ACCESS_TOKEN" RT="$NEW_REFRESH" ORG="${CF_ORG}" SPACE="${CF_SPACE}" python3 -c "import json,os; p=os.path.expanduser('~/.cf/config.json'); cfg=json.load(open(p)) if os.path.exists(p) else {}; cfg.update({'AccessToken':'bearer '+os.environ['AT'],'RefreshToken':os.environ['RT'],'OrganizationFields':{'GUID':'','Name':os.environ['ORG']},'SpaceFields':{'GUID':'','Name':os.environ['SPACE']}}); json.dump(cfg,open(p,'w')); print('Tokens patched, Target='+cfg.get('Target','MISSING'))"
           /usr/local/bin/cf target -o "${CF_ORG}" -s "${CF_SPACE}"
+          echo "CF login successful"
           echo "CF login successful"
 
       - name: Abort conflicting MTA processes
