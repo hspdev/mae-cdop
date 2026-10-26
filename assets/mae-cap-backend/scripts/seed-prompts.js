@@ -32,6 +32,7 @@
 
 'use strict';
 
+const cds = require('@sap/cds');
 const { v4: uuidv4 } = require('uuid');
 
 // ── Prompt definitions ────────────────────────────────────────────────────────
@@ -1221,6 +1222,7 @@ const PROMPTS = [
  * @returns {Promise<number>} Number of prompts inserted
  */
 async function seedPrompts(db) {
+  const { SELECT, INSERT } = cds;
   const now = new Date().toISOString();
 
   // Per-prompt idempotency: load existing titles, skip those already present
@@ -1274,8 +1276,6 @@ async function seedPrompts(db) {
 if (require.main === module) {
   (async () => {
     try {
-      const cds = require('@sap/cds');
-
       // Bootstrap CDS to resolve the model and connect to db
       await cds.connect();
       const db = await cds.connect.to('db');
