@@ -825,4 +825,318 @@ router.post('/contracts/:contractAccount/notification', async (req, res) => {
   }
 });
 
+// ── Bulk Read API ──────────────────────────────────────────────────────────────
+//
+// GET /api/bulk-read/customers
+//   Query params: status, segment, stateCode, region, city, zipCode,
+//                 notificationOptIn, limit (default 100, max 5000), offset (default 0)
+//
+// GET /api/bulk-read/contracts
+//   Query params: status, accountType, billingClass, stateCode, city, zipCode,
+//                 customerId, limit, offset
+//
+// GET /api/bulk-read/preferences
+//   Query params: channel, optedIn, preferredLanguage, limit, offset
+//
+// GET /api/bulk-read/address-history
+//   Query params: city, stateCode, days (default 90), changeSource, limit, offset
+//
+// GET /api/bulk-read/no-optin-customers
+//   Returns customers with NOTIFICATION_OPT_IN = false, grouped by segment/region
+
+const MAX_BULK_READ = 5000;
+
+function buildSummary(rows, groupByField) {
+  const counts = {};
+  for (const row of rows) {
+    const key = row[groupByField] || row[groupByField.toLowerCase()] || 'UNKNOWN';
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  return Object.entries(counts)
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+router.get('/bulk-read/customers', async (req, res) => {
+  try {
+    const db = await cds.connect.to('db');
+    const {
+      status, segment, stateCode, region, city, zipCode,
+      notificationOptIn,
+      limit  = 100,
+      offset = 0
+    } = req.query;
+
+    const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
+    const off = Number(offset) || 0;
+
+    let q = SELECT.from('mae.db.Customers')
+      .columns('CUSTOMER_ID','BUSINESS_PARTNER','FIRST_NAME','LAST_NAME','FULL_NAME',
+               'EMAIL','PHONE','CUSTOMER_SEGMENT','STATUS','CITY','STATE_CODE',
+               'ZIP_CODE','REGION','NOTIFICATION_OPT_IN','CREATED_ON','LAST_UPDATED')
+      .orderBy('LAST_UPDATED desc');
+
+    const where = {};
+    if (status)            where.STATUS            = status.toUpperCase();
+    if (segment)           where.CUSTOMER_SEGMENT  = segment.toUpperCase();
+    if (stateCode)         where.STATE_CODE         = stateCode.toUpperCase();
+    if (region)            where.REGION             = region.toUpperCase();
+    if (city)              where.CITY               = { like: `%${city}%` };
+    if (zipCode)           where.ZIP_CODE           = zipCode;
+    if (notificationOptIn !== undefined) {
+      where.NOTIFICATION_OPT_IN = notificationOptIn === 'true' || notificationOptIn === '1';
+    }
+    if (Object.keys(where).length > 0) q = q.where(where);
+
+    const all = await db.run(q);
+    const page = all.slice(off, off + lim);
+
+    res.json({
+      entity:   'Customers',
+      total:    all.length,
+      count:    page.length,
+      offset:   off,
+      limit:    lim,
+      filters:  { status, segment, stateCode, region, city, zipCode, notificationOptIn },
+      summary: {
+        bySegment: buildSummary(all, 'CUSTOMER_SEGMENT'),
+        byRegion:  buildSummary(all, 'REGION'),
+        byState:   buildSummary(all, 'STATE_CODE')
+      },
+      records: page.map(r => ({
+        customerId:        r.CUSTOMER_ID,
+        businessPartner:   r.BUSINESS_PARTNER,
+        fullName:          r.FULL_NAME || `${r.FIRST_NAME} ${r.LAST_NAME}`,
+        email:             r.EMAIL,
+        phone:             r.PHONE,
+        segment:           r.CUSTOMER_SEGMENT,
+        status:            r.STATUS,
+        city:              r.CITY,
+        stateCode:         r.STATE_CODE,
+        zipCode:           r.ZIP_CODE,
+        region:            r.REGION,
+        notificationOptIn: r.NOTIFICATION_OPT_IN,
+        createdOn:         r.CREATED_ON,
+        lastUpdated:       r.LAST_UPDATED
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/bulk-read/contracts', async (req, res) => {
+  try {
+    const db = await cds.connect.to('db');
+    const {
+      status, accountType, billingClass, stateCode, city, zipCode, customerId,
+      limit  = 100,
+      offset = 0
+    } = req.query;
+
+    const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
+    const off = Number(offset) || 0;
+
+    let q = SELECT.from('mae.db.ContractAccounts')
+      .orderBy('LAST_UPDATED desc');
+
+    const where = {};
+    if (status)       where.STATUS       = status.toUpperCase();
+    if (accountType)  where.ACCOUNT_TYPE = accountType.toUpperCase();
+    if (billingClass) where.BILLING_CLASS = billingClass.toUpperCase();
+    if (stateCode)    where.STATE_CODE   = stateCode.toUpperCase();
+    if (city)         where.CITY          = { like: `%${city}%` };
+    if (zipCode)      where.ZIP_CODE     = zipCode;
+    if (customerId)   where.CUSTOMER_ID  = customerId;
+    if (Object.keys(where).length > 0) q = q.where(where);
+
+    const all = await db.run(q);
+    const page = all.slice(off, off + lim);
+
+    res.json({
+      entity:   'ContractAccounts',
+      total:    all.length,
+      count:    page.length,
+      offset:   off,
+      limit:    lim,
+      filters:  { status, accountType, billingClass, stateCode, city, zipCode, customerId },
+      summary: {
+        byAccountType:  buildSummary(all, 'ACCOUNT_TYPE'),
+        byBillingClass: buildSummary(all, 'BILLING_CLASS'),
+        byState:        buildSummary(all, 'STATE_CODE')
+      },
+      records: page.map(r => ({
+        contractAccount: r.CONTRACT_ACCOUNT,
+        customerId:      r.CUSTOMER_ID,
+        accountType:     r.ACCOUNT_TYPE,
+        billingClass:    r.BILLING_CLASS,
+        status:          r.STATUS,
+        premiseId:       r.PREMISE_ID,
+        streetAddress:   r.STREET_ADDRESS,
+        city:            r.CITY,
+        stateCode:       r.STATE_CODE,
+        zipCode:         r.ZIP_CODE,
+        moveInDate:      r.MOVE_IN_DATE,
+        moveOutDate:     r.MOVE_OUT_DATE,
+        createdOn:       r.CREATED_ON,
+        lastUpdated:     r.LAST_UPDATED
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/bulk-read/preferences', async (req, res) => {
+  try {
+    const db = await cds.connect.to('db');
+    const {
+      channel, optedIn, preferredLanguage,
+      limit  = 100,
+      offset = 0
+    } = req.query;
+
+    const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
+    const off = Number(offset) || 0;
+
+    let q = SELECT.from('mae.db.CustomerPreferences')
+      .orderBy('LAST_UPDATED desc');
+
+    const where = {};
+    if (channel)           where.CHANNEL            = channel.toUpperCase();
+    if (preferredLanguage) where.PREFERRED_LANGUAGE = preferredLanguage.toUpperCase();
+    if (optedIn !== undefined) {
+      where.OPTED_IN = optedIn === 'true' || optedIn === '1';
+    }
+    if (Object.keys(where).length > 0) q = q.where(where);
+
+    const all = await db.run(q);
+    const page = all.slice(off, off + lim);
+
+    res.json({
+      entity:   'CustomerPreferences',
+      total:    all.length,
+      count:    page.length,
+      offset:   off,
+      limit:    lim,
+      filters:  { channel, optedIn, preferredLanguage },
+      summary: {
+        byChannel:  buildSummary(all, 'CHANNEL'),
+        byLanguage: buildSummary(all, 'PREFERRED_LANGUAGE'),
+        optInRate:  all.length > 0
+          ? Math.round((all.filter(r => r.OPTED_IN).length / all.length) * 100) + '%'
+          : 'N/A'
+      },
+      records: page.map(r => ({
+        preferenceId:      r.PREFERENCE_ID,
+        customerId:        r.CUSTOMER_ID,
+        channel:           r.CHANNEL,
+        preferenceType:    r.PREFERENCE_TYPE,
+        optedIn:           r.OPTED_IN,
+        preferredLanguage: r.PREFERRED_LANGUAGE,
+        preferredTime:     r.PREFERRED_TIME,
+        lastUpdated:       r.LAST_UPDATED,
+        updatedBy:         r.UPDATED_BY
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/bulk-read/address-history', async (req, res) => {
+  try {
+    const db = await cds.connect.to('db');
+    const {
+      city, stateCode, days = 90, changeSource,
+      limit  = 100,
+      offset = 0
+    } = req.query;
+
+    const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
+    const off = Number(offset) || 0;
+    const cutoff = new Date(Date.now() - Number(days) * 86400000).toISOString();
+
+    let q = SELECT.from('mae.db.AddressHistory')
+      .orderBy('CHANGE_DATE desc');
+
+    // Date range filter via raw SQL fragment
+    const conditions = [`CHANGE_DATE >= '${cutoff}'`];
+    if (city)         conditions.push(`(NEW_CITY LIKE '%${city.replace(/'/g, "''")}%' OR OLD_CITY LIKE '%${city.replace(/'/g, "''")}%')`);
+    if (stateCode)    conditions.push(`(NEW_STATE_CODE = '${stateCode.toUpperCase()}' OR OLD_STATE_CODE = '${stateCode.toUpperCase()}')`);
+    if (changeSource) conditions.push(`CHANGE_SOURCE = '${changeSource.replace(/'/g, "''")}'`);
+
+    q = q.where(conditions.join(' AND '));
+
+    const all = await db.run(q);
+    const page = all.slice(off, off + lim);
+
+    res.json({
+      entity:   'AddressHistory',
+      total:    all.length,
+      count:    page.length,
+      offset:   off,
+      limit:    lim,
+      filters:  { city, stateCode, days, changeSource },
+      summary: {
+        byChangeSource: buildSummary(all, 'CHANGE_SOURCE'),
+        byNewCity:      buildSummary(all, 'NEW_CITY').slice(0, 10),
+        byNewState:     buildSummary(all, 'NEW_STATE_CODE')
+      },
+      records: page.map(r => ({
+        historyId:       r.HISTORY_ID,
+        contractAccount: r.CONTRACT_ACCOUNT,
+        customerId:      r.CUSTOMER_ID,
+        oldAddress:      `${r.OLD_STREET_ADDRESS}, ${r.OLD_CITY}, ${r.OLD_STATE_CODE} ${r.OLD_ZIP_CODE}`,
+        newAddress:      `${r.NEW_STREET_ADDRESS}, ${r.NEW_CITY}, ${r.NEW_STATE_CODE} ${r.NEW_ZIP_CODE}`,
+        changeDate:      r.CHANGE_DATE,
+        changeSource:    r.CHANGE_SOURCE,
+        verified:        r.VERIFIED
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/bulk-read/no-optin-customers', async (req, res) => {
+  try {
+    const db = await cds.connect.to('db');
+    const { limit = 100, offset = 0 } = req.query;
+    const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
+    const off = Number(offset) || 0;
+
+    const all = await db.run(
+      SELECT.from('mae.db.Customers')
+        .where({ NOTIFICATION_OPT_IN: false })
+        .orderBy('LAST_UPDATED desc')
+    );
+    const page = all.slice(off, off + lim);
+
+    res.json({
+      entity:   'Customers',
+      subType:  'NoOptIn',
+      total:    all.length,
+      count:    page.length,
+      offset:   off,
+      limit:    lim,
+      summary: {
+        bySegment: buildSummary(all, 'CUSTOMER_SEGMENT'),
+        byRegion:  buildSummary(all, 'REGION')
+      },
+      records: page.map(r => ({
+        customerId:  r.CUSTOMER_ID,
+        fullName:    r.FULL_NAME || `${r.FIRST_NAME} ${r.LAST_NAME}`,
+        email:       r.EMAIL,
+        segment:     r.CUSTOMER_SEGMENT,
+        region:      r.REGION,
+        stateCode:   r.STATE_CODE,
+        lastUpdated: r.LAST_UPDATED
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

@@ -1136,6 +1136,78 @@ const PROMPTS = [
     jobType: null,
     tags: 'AI-Core,health-check,integration,SAP,availability',
     text: 'Perform a health check on the SAP AI Core integration for the MAE Platform. Verify that the OAuth token refresh is working correctly, that the deployment ID resolves to an available model, that request latency is within the 5-second SLA, and that fallback to rule-based responses is triggering correctly when AI Core is unavailable. Report the current AI Core availability percentage for the last 7 days and recommend any configuration changes to improve reliability.'
+  },
+
+  // ── Bulk Read ─────────────────────────────────────────────────────────────
+  {
+    id: 'BR-001',
+    cat: 'Bulk Read',
+    title: 'Read All Active Customers',
+    recommended: true,
+    persona: 'Operations Manager',
+    jobType: null,
+    tags: 'bulk-read,customers,active,list,data-access',
+    text: 'Show me all active customers. Display their customer ID, full name, email, phone, segment, city, state, and region. Filter to STATUS = ACTIVE only. Paginate the results with 50 records per page and provide a summary count by segment and by region.'
+  },
+  {
+    id: 'BR-002',
+    cat: 'Bulk Read',
+    title: 'Read Customers by State or Region',
+    recommended: false,
+    persona: 'Operations Manager',
+    jobType: null,
+    tags: 'bulk-read,customers,filter,state,region',
+    text: 'Retrieve all customers filtered by a specific state or region. Show customer ID, full name, email, segment, city, state, and ZIP code. Allow filtering by STATE_CODE or REGION and show a count breakdown by city within the selected state or region.'
+  },
+  {
+    id: 'BR-003',
+    cat: 'Bulk Read',
+    title: 'Read All Active Contract Accounts',
+    recommended: true,
+    persona: 'Operations Manager',
+    jobType: null,
+    tags: 'bulk-read,contracts,active,list,data-access',
+    text: 'List all active contract accounts with their contract account number, linked customer ID, account type, billing class, premise ID, street address, city, state, and ZIP code. Filter to STATUS = ACTIVE. Show a summary count by account type and by billing class.'
+  },
+  {
+    id: 'BR-004',
+    cat: 'Bulk Read',
+    title: 'Read Contract Accounts by Customer',
+    recommended: false,
+    persona: 'Customer Support',
+    jobType: null,
+    tags: 'bulk-read,contracts,customer,lookup,relationship',
+    text: 'Look up all contract accounts associated with a specific customer ID. Display each contract account number, account type, billing class, current address, move-in date, move-out date, and status. Show whether any accounts have had address changes in the last 90 days.'
+  },
+  {
+    id: 'BR-005',
+    cat: 'Bulk Read',
+    title: 'Read Customer Preferences in Bulk',
+    recommended: false,
+    persona: 'Operations Manager',
+    jobType: null,
+    tags: 'bulk-read,preferences,communication,channel,opt-in',
+    text: 'Retrieve all customer communication preferences. Show customer ID, channel (EMAIL, SMS, MAIL), preference type, opted-in status, preferred language, and preferred contact time. Provide a summary of opt-in rates per channel and highlight customers who have opted out of all channels.'
+  },
+  {
+    id: 'BR-006',
+    cat: 'Bulk Read',
+    title: 'Read Recent Address History',
+    recommended: false,
+    persona: 'Data Analyst',
+    jobType: null,
+    tags: 'bulk-read,address,history,changes,audit',
+    text: 'Show address change history for the last 90 days. Include contract account number, customer ID, old address, new address, change date, change source, and whether the change was verified. Group results by change source and show which cities have seen the highest volume of address changes.'
+  },
+  {
+    id: 'BR-007',
+    cat: 'Bulk Read',
+    title: 'Read Customers with No Notification Opt-In',
+    recommended: false,
+    persona: 'Compliance Officer',
+    jobType: null,
+    tags: 'bulk-read,customers,notification,opt-out,compliance',
+    text: 'List all customers where NOTIFICATION_OPT_IN = false or who have opted out of all communication channels in the preferences table. Show customer ID, full name, email, segment, region, and date of last preference update. Group by segment and region to identify concentrations of unreachable customers.'
   }
 
 ];
@@ -1143,7 +1215,7 @@ const PROMPTS = [
 // ── Core seed function ────────────────────────────────────────────────────────
 
 /**
- * Seed all 105 prompts into the PromptLibrary table.
+ * Seed all 112 prompts into the PromptLibrary table.
  *
  * @param {object} db - Open CDS database connection
  * @returns {Promise<number>} Number of prompts inserted
@@ -1197,7 +1269,7 @@ async function seedPrompts(db) {
     inserted++;
   }
 
-  console.log(`[seed-prompts] Inserted ${inserted} prompts across 15 categories.`);
+  console.log(`[seed-prompts] Inserted ${inserted} prompts across 16 categories.`);
   return inserted;
 }
 

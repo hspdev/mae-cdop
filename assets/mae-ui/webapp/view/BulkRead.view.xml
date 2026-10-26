@@ -1,0 +1,204 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.BulkRead"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:l="sap.ui.layout"
+  xmlns:f="sap.ui.layout.form"
+  xmlns:t="sap.ui.table"
+  xmlns:core="sap.ui.core"
+  displayBlock="true">
+
+  <Page title="Bulk Read" showNavButton="false" class="sapUiContentPadding">
+
+    <!-- Prompt selector panel -->
+    <Panel headerText="Select a Bulk Read Prompt" expandable="false" class="sapUiSmallMarginBottom">
+      <content>
+        <l:HorizontalLayout allowWrapping="true" class="sapUiSmallMargin">
+          <Select id="promptSelect"
+            width="22rem"
+            forceSelection="false"
+            placeholder="Choose a bulk read prompt…"
+            change=".onPromptSelected">
+            <items>
+              <core:Item key="" text="— Select a prompt —"/>
+              <core:Item key="BR-001" text="Read All Active Customers"/>
+              <core:Item key="BR-002" text="Read Customers by State or Region"/>
+              <core:Item key="BR-003" text="Read All Active Contract Accounts"/>
+              <core:Item key="BR-004" text="Read Contract Accounts by Customer"/>
+              <core:Item key="BR-005" text="Read Customer Preferences in Bulk"/>
+              <core:Item key="BR-006" text="Read Recent Address History"/>
+              <core:Item key="BR-007" text="Read Customers with No Notification Opt-In"/>
+            </items>
+          </Select>
+
+          <!-- Dynamic filter fields (shown per prompt) -->
+          <HBox id="filterBox" visible="false" class="sapUiSmallMarginBegin" wrap="Wrap">
+            <Input id="filterInput1" width="12rem" placeholder="" visible="false" class="sapUiSmallMarginEnd"/>
+            <Input id="filterInput2" width="12rem" placeholder="" visible="false" class="sapUiSmallMarginEnd"/>
+            <Select id="filterStatus" width="10rem" visible="false" class="sapUiSmallMarginEnd">
+              <items>
+                <core:Item key="" text="All Statuses"/>
+                <core:Item key="ACTIVE" text="ACTIVE"/>
+                <core:Item key="INACTIVE" text="INACTIVE"/>
+              </items>
+            </Select>
+            <Select id="filterSegment" width="12rem" visible="false" class="sapUiSmallMarginEnd">
+              <items>
+                <core:Item key="" text="All Segments"/>
+                <core:Item key="RESIDENTIAL" text="RESIDENTIAL"/>
+                <core:Item key="COMMERCIAL" text="COMMERCIAL"/>
+                <core:Item key="INDUSTRIAL" text="INDUSTRIAL"/>
+              </items>
+            </Select>
+            <StepInput id="filterLimit" min="10" max="5000" step="50" value="100"
+              width="8rem" visible="false" class="sapUiSmallMarginEnd"/>
+          </HBox>
+
+          <Button id="executeBtn" text="Execute" type="Emphasized"
+            icon="sap-icon://play" press=".onExecute"
+            enabled="false" class="sapUiSmallMarginBegin"/>
+          <Button id="clearBtn" text="Clear" type="Default"
+            icon="sap-icon://clear-all" press=".onClear"
+            class="sapUiSmallMarginBegin"/>
+        </l:HorizontalLayout>
+
+        <!-- Prompt description text -->
+        <Text id="promptDesc" text="" class="sapUiSmallMarginBeginEnd sapUiSmallMarginBottom"
+          wrapping="true" visible="false"/>
+      </content>
+    </Panel>
+
+    <!-- AI Response / Summary panel -->
+    <Panel id="responsePanel" headerText="AI Analysis" visible="false"
+           expandable="true" expanded="true" class="sapUiSmallMarginBottom">
+      <content>
+        <VBox class="sapUiSmallMargin">
+          <BusyIndicator id="responseBusy" visible="false" size="Small"/>
+          <FormattedText id="responseText" htmlText="" class="sapUiSmallMarginTop"
+            width="100%" visible="false"/>
+          <!-- Summary tiles -->
+          <HBox id="summaryTiles" visible="false" wrap="Wrap" class="sapUiSmallMarginTop"/>
+        </VBox>
+      </content>
+    </Panel>
+
+    <!-- Results table -->
+    <Panel id="resultsPanel" headerText="Results" visible="false"
+           expandable="true" expanded="true">
+      <headerToolbar>
+        <Toolbar>
+          <Title id="resultsTitle" text="Results" level="H5"/>
+          <ToolbarSpacer/>
+          <Text id="recordCount" text="" class="sapUiSmallMarginEnd"/>
+          <Button text="Export CSV" icon="sap-icon://download" press=".onExportCSV"/>
+        </Toolbar>
+      </headerToolbar>
+      <content>
+        <!-- Customer table (BR-001, BR-002, BR-007) -->
+        <t:Table id="customerTable" visible="false"
+          rows="{bulkRead>/records}"
+          visibleRowCount="15"
+          selectionMode="None"
+          enableSelectAll="false"
+          alternateRowColors="true">
+          <t:columns>
+            <t:Column width="9rem"><Label text="Customer ID"/><t:template><Text text="{bulkRead>customerId}"/></t:template></t:Column>
+            <t:Column width="14rem"><Label text="Full Name"/><t:template><Text text="{bulkRead>fullName}"/></t:template></t:Column>
+            <t:Column width="16rem"><Label text="Email"/><t:template><Text text="{bulkRead>email}"/></t:template></t:Column>
+            <t:Column width="8rem"><Label text="Phone"/><t:template><Text text="{bulkRead>phone}"/></t:template></t:Column>
+            <t:Column width="10rem"><Label text="Segment"/><t:template><Text text="{bulkRead>segment}"/></t:template></t:Column>
+            <t:Column width="8rem"><Label text="Status"/><t:template>
+              <ObjectStatus text="{bulkRead>status}"
+                state="{= ${bulkRead>status} === 'ACTIVE' ? 'Success' : 'Warning'}"/>
+            </t:template></t:Column>
+            <t:Column width="12rem"><Label text="City"/><t:template><Text text="{bulkRead>city}"/></t:template></t:Column>
+            <t:Column width="6rem"><Label text="State"/><t:template><Text text="{bulkRead>stateCode}"/></t:template></t:Column>
+            <t:Column width="7rem"><Label text="ZIP"/><t:template><Text text="{bulkRead>zipCode}"/></t:template></t:Column>
+            <t:Column width="9rem"><Label text="Region"/><t:template><Text text="{bulkRead>region}"/></t:template></t:Column>
+            <t:Column width="9rem"><Label text="Notify Opt-In"/><t:template>
+              <ObjectStatus text="{= ${bulkRead>notificationOptIn} ? 'Yes' : 'No'}"
+                state="{= ${bulkRead>notificationOptIn} ? 'Success' : 'Error'}"/>
+            </t:template></t:Column>
+          </t:columns>
+        </t:Table>
+
+        <!-- Contract table (BR-003, BR-004) -->
+        <t:Table id="contractTable" visible="false"
+          rows="{bulkRead>/records}"
+          visibleRowCount="15"
+          selectionMode="None"
+          enableSelectAll="false"
+          alternateRowColors="true">
+          <t:columns>
+            <t:Column width="11rem"><Label text="Contract Account"/><t:template><Text text="{bulkRead>contractAccount}"/></t:template></t:Column>
+            <t:Column width="10rem"><Label text="Customer ID"/><t:template><Text text="{bulkRead>customerId}"/></t:template></t:Column>
+            <t:Column width="12rem"><Label text="Account Type"/><t:template><Text text="{bulkRead>accountType}"/></t:template></t:Column>
+            <t:Column width="12rem"><Label text="Billing Class"/><t:template><Text text="{bulkRead>billingClass}"/></t:template></t:Column>
+            <t:Column width="8rem"><Label text="Status"/><t:template>
+              <ObjectStatus text="{bulkRead>status}"
+                state="{= ${bulkRead>status} === 'ACTIVE' ? 'Success' : 'Warning'}"/>
+            </t:template></t:Column>
+            <t:Column width="20rem"><Label text="Address"/><t:template><Text text="{bulkRead>streetAddress}"/></t:template></t:Column>
+            <t:Column width="12rem"><Label text="City"/><t:template><Text text="{bulkRead>city}"/></t:template></t:Column>
+            <t:Column width="6rem"><Label text="State"/><t:template><Text text="{bulkRead>stateCode}"/></t:template></t:Column>
+            <t:Column width="7rem"><Label text="ZIP"/><t:template><Text text="{bulkRead>zipCode}"/></t:template></t:Column>
+            <t:Column width="10rem"><Label text="Move-In Date"/><t:template><Text text="{bulkRead>moveInDate}"/></t:template></t:Column>
+          </t:columns>
+        </t:Table>
+
+        <!-- Preferences table (BR-005) -->
+        <t:Table id="preferencesTable" visible="false"
+          rows="{bulkRead>/records}"
+          visibleRowCount="15"
+          selectionMode="None"
+          enableSelectAll="false"
+          alternateRowColors="true">
+          <t:columns>
+            <t:Column width="10rem"><Label text="Customer ID"/><t:template><Text text="{bulkRead>customerId}"/></t:template></t:Column>
+            <t:Column width="9rem"><Label text="Channel"/><t:template><Text text="{bulkRead>channel}"/></t:template></t:Column>
+            <t:Column width="14rem"><Label text="Preference Type"/><t:template><Text text="{bulkRead>preferenceType}"/></t:template></t:Column>
+            <t:Column width="9rem"><Label text="Opted In"/><t:template>
+              <ObjectStatus text="{= ${bulkRead>optedIn} ? 'Yes' : 'No'}"
+                state="{= ${bulkRead>optedIn} ? 'Success' : 'Error'}"/>
+            </t:template></t:Column>
+            <t:Column width="9rem"><Label text="Language"/><t:template><Text text="{bulkRead>preferredLanguage}"/></t:template></t:Column>
+            <t:Column width="12rem"><Label text="Preferred Time"/><t:template><Text text="{bulkRead>preferredTime}"/></t:template></t:Column>
+            <t:Column width="14rem"><Label text="Last Updated"/><t:template><Text text="{bulkRead>lastUpdated}"/></t:template></t:Column>
+          </t:columns>
+        </t:Table>
+
+        <!-- Address History table (BR-006) -->
+        <t:Table id="historyTable" visible="false"
+          rows="{bulkRead>/records}"
+          visibleRowCount="15"
+          selectionMode="None"
+          enableSelectAll="false"
+          alternateRowColors="true">
+          <t:columns>
+            <t:Column width="11rem"><Label text="Contract Account"/><t:template><Text text="{bulkRead>contractAccount}"/></t:template></t:Column>
+            <t:Column width="10rem"><Label text="Customer ID"/><t:template><Text text="{bulkRead>customerId}"/></t:template></t:Column>
+            <t:Column width="22rem"><Label text="Old Address"/><t:template><Text text="{bulkRead>oldAddress}"/></t:template></t:Column>
+            <t:Column width="22rem"><Label text="New Address"/><t:template><Text text="{bulkRead>newAddress}"/></t:template></t:Column>
+            <t:Column width="14rem"><Label text="Change Date"/><t:template><Text text="{bulkRead>changeDate}"/></t:template></t:Column>
+            <t:Column width="13rem"><Label text="Change Source"/><t:template><Text text="{bulkRead>changeSource}"/></t:template></t:Column>
+            <t:Column width="9rem"><Label text="Verified"/><t:template>
+              <ObjectStatus text="{= ${bulkRead>verified} ? 'Yes' : 'No'}"
+                state="{= ${bulkRead>verified} ? 'Success' : 'Warning'}"/>
+            </t:template></t:Column>
+          </t:columns>
+        </t:Table>
+
+        <!-- Pagination bar -->
+        <HBox id="paginationBar" visible="false"
+          justifyContent="Center" alignItems="Center" class="sapUiSmallMargin">
+          <Button id="prevBtn" icon="sap-icon://navigation-left-arrow"
+            text="Previous" press=".onPrevPage" enabled="false"/>
+          <Text id="pageInfo" text="Page 1" class="sapUiSmallMarginBeginEnd"/>
+          <Button id="nextBtn" icon="sap-icon://navigation-right-arrow"
+            iconFirst="false" text="Next" press=".onNextPage" enabled="false"/>
+        </HBox>
+      </content>
+    </Panel>
+
+  </Page>
+</mvc:View>

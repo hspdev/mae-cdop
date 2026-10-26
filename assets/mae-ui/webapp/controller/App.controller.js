@@ -27,6 +27,7 @@ sap.ui.define([
       const routeMap = {
         dashboard:        "dashboard",
         copilot:          "copilot",
+        bulkRead:         "bulkRead",
         createJob:        "createJob",
         jobMonitor:       "jobMonitor",
         failureAnalysis:  "failureAnalysis",

@@ -26,6 +26,7 @@
         <tnt:items>
           <tnt:NavigationListItem text="Dashboard"        icon="sap-icon://home"             key="dashboard"/>
           <tnt:NavigationListItem text="Copilot"          icon="sap-icon://da"                key="copilot"/>
+          <tnt:NavigationListItem text="Bulk Read"        icon="sap-icon://database"          key="bulkRead"/>
           <tnt:NavigationListItem text="Create Job"       icon="sap-icon://add"               key="createJob"/>
           <tnt:NavigationListItem text="Job Monitor"      icon="sap-icon://task"              key="jobMonitor"/>
           <tnt:NavigationListItem text="Failure Analysis" icon="sap-icon://alert"             key="failureAnalysis"/>
