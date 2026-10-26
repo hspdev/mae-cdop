@@ -1,0 +1,126 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.CustomerRecords"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:t="sap.ui.table"
+  xmlns:core="sap.ui.core"
+  displayBlock="true">
+
+  <Page title="Customer Records" showNavButton="false" class="sapUiContentPadding">
+
+    <Panel headerText="Search Filters" expandable="false" class="sapUiSmallMarginBottom">
+      <content>
+        <HBox wrap="Wrap" class="sapUiSmallMargin" alignItems="Center">
+          <Input id="custIdInput" width="14rem" placeholder="Customer ID or Name" class="sapUiSmallMarginEnd"/>
+          <Select id="stateSelect" width="11rem" class="sapUiSmallMarginEnd">
+            <items>
+              <core:Item key="" text="All States"/>
+              <core:Item key="AL" text="AL – Alabama"/><core:Item key="AK" text="AK – Alaska"/>
+              <core:Item key="AZ" text="AZ – Arizona"/><core:Item key="AR" text="AR – Arkansas"/>
+              <core:Item key="CA" text="CA – California"/><core:Item key="CO" text="CO – Colorado"/>
+              <core:Item key="CT" text="CT – Connecticut"/><core:Item key="DE" text="DE – Delaware"/>
+              <core:Item key="FL" text="FL – Florida"/><core:Item key="GA" text="GA – Georgia"/>
+              <core:Item key="HI" text="HI – Hawaii"/><core:Item key="ID" text="ID – Idaho"/>
+              <core:Item key="IL" text="IL – Illinois"/><core:Item key="IN" text="IN – Indiana"/>
+              <core:Item key="IA" text="IA – Iowa"/><core:Item key="KS" text="KS – Kansas"/>
+              <core:Item key="KY" text="KY – Kentucky"/><core:Item key="LA" text="LA – Louisiana"/>
+              <core:Item key="ME" text="ME – Maine"/><core:Item key="MD" text="MD – Maryland"/>
+              <core:Item key="MA" text="MA – Massachusetts"/><core:Item key="MI" text="MI – Michigan"/>
+              <core:Item key="MN" text="MN – Minnesota"/><core:Item key="MS" text="MS – Mississippi"/>
+              <core:Item key="MO" text="MO – Missouri"/><core:Item key="MT" text="MT – Montana"/>
+              <core:Item key="NE" text="NE – Nebraska"/><core:Item key="NV" text="NV – Nevada"/>
+              <core:Item key="NH" text="NH – New Hampshire"/><core:Item key="NJ" text="NJ – New Jersey"/>
+              <core:Item key="NM" text="NM – New Mexico"/><core:Item key="NY" text="NY – New York"/>
+              <core:Item key="NC" text="NC – North Carolina"/><core:Item key="ND" text="ND – North Dakota"/>
+              <core:Item key="OH" text="OH – Ohio"/><core:Item key="OK" text="OK – Oklahoma"/>
+              <core:Item key="OR" text="OR – Oregon"/><core:Item key="PA" text="PA – Pennsylvania"/>
+              <core:Item key="RI" text="RI – Rhode Island"/><core:Item key="SC" text="SC – South Carolina"/>
+              <core:Item key="SD" text="SD – South Dakota"/><core:Item key="TN" text="TN – Tennessee"/>
+              <core:Item key="TX" text="TX – Texas"/><core:Item key="UT" text="UT – Utah"/>
+              <core:Item key="VT" text="VT – Vermont"/><core:Item key="VA" text="VA – Virginia"/>
+              <core:Item key="WA" text="WA – Washington"/><core:Item key="WV" text="WV – West Virginia"/>
+              <core:Item key="WI" text="WI – Wisconsin"/><core:Item key="WY" text="WY – Wyoming"/>
+            </items>
+          </Select>
+          <Select id="segmentSelect" width="13rem" class="sapUiSmallMarginEnd">
+            <items>
+              <core:Item key="" text="All Segments"/>
+              <core:Item key="RESIDENTIAL" text="RESIDENTIAL"/>
+              <core:Item key="COMMERCIAL"  text="COMMERCIAL"/>
+              <core:Item key="INDUSTRIAL"  text="INDUSTRIAL"/>
+            </items>
+          </Select>
+          <Select id="statusSelect" width="10rem" class="sapUiSmallMarginEnd">
+            <items>
+              <core:Item key=""         text="All Statuses"/>
+              <core:Item key="ACTIVE"   text="ACTIVE"/>
+              <core:Item key="INACTIVE" text="INACTIVE"/>
+            </items>
+          </Select>
+          <Button text="Search" type="Emphasized" icon="sap-icon://search"
+            press=".onSearch" class="sapUiSmallMarginEnd"/>
+          <Button text="Reset" type="Default" icon="sap-icon://clear-all"
+            press=".onReset"/>
+        </HBox>
+      </content>
+    </Panel>
+
+    <t:Table id="customersTable"
+      rows="{customerModel>/records}"
+      visibleRowCount="15"
+      selectionMode="None"
+      enableSelectAll="false"
+      alternateRowColors="true">
+      <t:toolbar>
+        <Toolbar>
+          <Title text="Customers" level="H5"/>
+          <ToolbarSpacer/>
+          <Text id="custRecordCount" text=""/>
+          <Button text="Export CSV" icon="sap-icon://download"
+            press=".onExportCSV" class="sapUiSmallMarginBegin"/>
+        </Toolbar>
+      </t:toolbar>
+      <t:columns>
+        <t:Column width="10rem"><Label text="Customer ID"/>
+          <t:template><Text text="{customerModel>customerId}"/></t:template></t:Column>
+        <t:Column width="14rem"><Label text="Full Name"/>
+          <t:template><Text text="{customerModel>fullName}"/></t:template></t:Column>
+        <t:Column width="17rem"><Label text="Email"/>
+          <t:template><Text text="{customerModel>email}"/></t:template></t:Column>
+        <t:Column width="10rem"><Label text="Phone"/>
+          <t:template><Text text="{customerModel>phone}"/></t:template></t:Column>
+        <t:Column width="11rem"><Label text="Segment"/>
+          <t:template><Text text="{customerModel>segment}"/></t:template></t:Column>
+        <t:Column width="8rem"><Label text="Status"/>
+          <t:template>
+            <ObjectStatus text="{customerModel>status}"
+              state="{= ${customerModel>status} === 'ACTIVE' ? 'Success' : 'Warning'}"/>
+          </t:template></t:Column>
+        <t:Column width="12rem"><Label text="City"/>
+          <t:template><Text text="{customerModel>city}"/></t:template></t:Column>
+        <t:Column width="6rem"><Label text="State"/>
+          <t:template><Text text="{customerModel>stateCode}"/></t:template></t:Column>
+        <t:Column width="7rem"><Label text="ZIP"/>
+          <t:template><Text text="{customerModel>zipCode}"/></t:template></t:Column>
+        <t:Column width="9rem"><Label text="Region"/>
+          <t:template><Text text="{customerModel>region}"/></t:template></t:Column>
+        <t:Column width="10rem"><Label text="Notify Opt-In"/>
+          <t:template>
+            <ObjectStatus
+              text="{= ${customerModel>notificationOptIn} ? 'Yes' : 'No'}"
+              state="{= ${customerModel>notificationOptIn} ? 'Success' : 'Error'}"/>
+          </t:template></t:Column>
+      </t:columns>
+    </t:Table>
+
+    <HBox id="custPaginationBar" visible="false"
+      justifyContent="Center" alignItems="Center" class="sapUiSmallMargin">
+      <Button id="custPrevBtn" icon="sap-icon://navigation-left-arrow"
+        text="Previous" press=".onPrevPage" enabled="false"/>
+      <Text id="custPageInfo" text="Page 1" class="sapUiSmallMarginBeginEnd"/>
+      <Button id="custNextBtn" icon="sap-icon://navigation-right-arrow"
+        iconFirst="false" text="Next" press=".onNextPage" enabled="false"/>
+    </HBox>
+
+  </Page>
+</mvc:View>

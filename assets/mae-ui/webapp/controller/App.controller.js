@@ -32,7 +32,9 @@ sap.ui.define([
         jobMonitor:       "jobMonitor",
         failureAnalysis:  "failureAnalysis",
         executiveSummary: "executiveSummary",
-        platformInsights: "platformInsights"
+        platformInsights: "platformInsights",
+        customerRecords:  "customerRecords",
+        promptLibrary:    "promptLibrary"
       };
       if (routeMap[key]) {
         router.navTo(routeMap[key]);

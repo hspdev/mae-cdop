@@ -1,0 +1,87 @@
+<mvc:View
+  controllerName="com.duci.mae.cdop.controller.PromptLibrary"
+  xmlns:mvc="sap.ui.core.mvc"
+  xmlns="sap.m"
+  xmlns:core="sap.ui.core"
+  displayBlock="true">
+
+  <Page title="Prompt Library" showNavButton="false" class="sapUiContentPadding">
+
+    <Panel headerText="Filter Prompts" expandable="false" class="sapUiSmallMarginBottom">
+      <content>
+        <HBox wrap="Wrap" class="sapUiSmallMargin" alignItems="Center">
+          <Select id="catSelect" width="18rem" class="sapUiSmallMarginEnd">
+            <items>
+              <core:Item key="" text="All Categories"/>
+            </items>
+          </Select>
+          <Input id="promptSearch" width="18rem" placeholder="Search prompts…"
+            class="sapUiSmallMarginEnd"/>
+          <CheckBox id="recommendedChk" text="Recommended Only"
+            class="sapUiSmallMarginEnd"/>
+          <Button text="Search" type="Emphasized" icon="sap-icon://search"
+            press=".onSearch"/>
+        </HBox>
+        <HBox class="sapUiSmallMarginBeginEnd sapUiTinyMarginBottom">
+          <Text id="promptCountText" text=""/>
+        </HBox>
+      </content>
+    </Panel>
+
+    <Panel id="execPanel" headerText="Execution Result" visible="false"
+           expandable="true" expanded="true" class="sapUiSmallMarginBottom">
+      <content>
+        <VBox class="sapUiSmallMargin">
+          <BusyIndicator id="execBusy" visible="false" size="Small"/>
+          <FormattedText id="execResult" htmlText="" width="100%"/>
+        </VBox>
+      </content>
+    </Panel>
+
+    <List id="promptList"
+      items="{promptModel>/prompts}"
+      mode="None"
+      noDataText="No prompts found. Use the filters above and click Search."
+      growing="true"
+      growingThreshold="50">
+      <items>
+        <StandardListItem
+          title="{promptModel>TITLE}"
+          description="{promptModel>CATEGORY} · {promptModel>PERSONA}"
+          info="{= ${promptModel>IS_RECOMMENDED} ? '★ Recommended' : ''}"
+          infoState="{= ${promptModel>IS_RECOMMENDED} ? 'Success' : 'None'}"
+          type="Active"
+          press=".onPromptPress"/>
+      </items>
+    </List>
+
+    <Dialog id="promptDetailDialog"
+      title="{promptDetail>/TITLE}"
+      contentWidth="44rem"
+      resizable="true"
+      draggable="true">
+      <content>
+        <VBox class="sapUiSmallMargin">
+          <Label text="Description" class="sapUiTinyMarginBottom"/>
+          <FormattedText htmlText="{= '&lt;span style=&quot;font-size:0.875rem;&quot;&gt;' + (${promptDetail>/DESCRIPTION} || '') + '&lt;/span&gt;'}"
+            width="100%" class="sapUiSmallMarginBottom"/>
+          <Label text="Prompt Text" class="sapUiTinyMarginBottom"/>
+          <TextArea value="{promptDetail>/PROMPT_TEXT}"
+            editable="false" rows="8" width="100%"
+            class="sapUiSmallMarginBottom"/>
+          <HBox>
+            <ObjectStatus text="{promptDetail>/CATEGORY}" state="Information" class="sapUiSmallMarginEnd"/>
+            <ObjectStatus text="{promptDetail>/PERSONA}" state="None"/>
+          </HBox>
+        </VBox>
+      </content>
+      <beginButton>
+        <Button text="Execute" type="Emphasized" press=".onExecutePrompt"/>
+      </beginButton>
+      <endButton>
+        <Button text="Close" press=".onCloseDialog"/>
+      </endButton>
+    </Dialog>
+
+  </Page>
+</mvc:View>

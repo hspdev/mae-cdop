@@ -84,14 +84,16 @@
         "async": true
       },
       "routes": [
-        { "pattern": "",            "name": "dashboard",       "target": "dashboard" },
-        { "pattern": "copilot",     "name": "copilot",         "target": "copilot" },
-        { "pattern": "bulk-read",   "name": "bulkRead",        "target": "bulkRead" },
-        { "pattern": "create-job",  "name": "createJob",       "target": "createJob" },
-        { "pattern": "jobs",        "name": "jobMonitor",      "target": "jobMonitor" },
+        { "pattern": "",              "name": "dashboard",       "target": "dashboard" },
+        { "pattern": "copilot",       "name": "copilot",         "target": "copilot" },
+        { "pattern": "bulk-read",     "name": "bulkRead",        "target": "bulkRead" },
+        { "pattern": "create-job",    "name": "createJob",       "target": "createJob" },
+        { "pattern": "jobs",          "name": "jobMonitor",      "target": "jobMonitor" },
         { "pattern": "jobs/:batchId/failures", "name": "failureAnalysis", "target": "failureAnalysis" },
-        { "pattern": "executive",   "name": "executiveSummary","target": "executiveSummary" },
-        { "pattern": "insights",    "name": "platformInsights","target": "platformInsights" }
+        { "pattern": "executive",     "name": "executiveSummary","target": "executiveSummary" },
+        { "pattern": "insights",      "name": "platformInsights","target": "platformInsights" },
+        { "pattern": "customers",     "name": "customerRecords", "target": "customerRecords" },
+        { "pattern": "prompt-library","name": "promptLibrary",   "target": "promptLibrary" }
       ],
       "targets": {
         "dashboard":        { "id": "dashboard",        "name": "Dashboard" },
@@ -101,7 +103,9 @@
         "jobMonitor":       { "id": "jobMonitor",       "name": "JobMonitor" },
         "failureAnalysis":  { "id": "failureAnalysis",  "name": "FailureAnalysis" },
         "executiveSummary": { "id": "executiveSummary", "name": "ExecutiveSummary" },
-        "platformInsights": { "id": "platformInsights", "name": "PlatformInsights" }
+        "platformInsights": { "id": "platformInsights", "name": "PlatformInsights" },
+        "customerRecords":  { "id": "customerRecords",  "name": "CustomerRecords" },
+        "promptLibrary":    { "id": "promptLibrary",    "name": "PromptLibrary" }
       }
     }
   }
