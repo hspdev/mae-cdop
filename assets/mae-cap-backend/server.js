@@ -43,12 +43,11 @@ cds.on('served', async () => {
       cds.log('server').warn('Demo seed skipped:', seedErr.message);
     }
 
-    // Seed prompt library — uses per-title idempotency so new categories are inserted
+    // Seed prompt library — per-title idempotency, inserts only missing prompts
     try {
-      const seedPrompts = require('./scripts/seed-prompts');
-      await seedPrompts(db);
+      await _seedPromptLibrary(db);
     } catch (promptSeedErr) {
-      cds.log('server').warn('Prompt seed skipped:', promptSeedErr.message);
+      cds.log('server').warn('Prompt seed failed:', promptSeedErr.message);
     }
 
   } catch (err) {
@@ -263,6 +262,52 @@ async function _seedDemoData(db) {
   }
 
   cds.log('server').info(`Seeded: ${customers.length} customers, ${contractAccounts.length} contract accounts, ${addressHistory.length} address history, ${preferences.length} preferences`);
+}
+
+// ── Prompt Library Seed ───────────────────────────────────────────────────────
+
+async function _seedPromptLibrary(db) {
+  const { v4: uuidv4 } = require('uuid');
+  const now = new Date().toISOString();
+
+  // Load existing prompt titles to support per-title idempotency
+  let existingTitles = new Set();
+  try {
+    const rows = await db.run(SELECT.from('mae.db.PromptLibrary').columns('TITLE'));
+    existingTitles = new Set((rows || []).map(r => r.TITLE));
+  } catch (_) {}
+
+  const SYSTEM_CTX = 'You are an AI assistant for DUCI utility company operations platform. Provide specific, actionable responses based on actual system data. Always cite data sources and recommend concrete next steps.';
+
+  const PROMPTS = require('./scripts/seed-prompts-data');
+
+  let inserted = 0;
+  const entries = [];
+  for (const p of PROMPTS) {
+    if (existingTitles.has(p.title)) continue;
+    const desc = p.text.length > 200 ? p.text.substring(0, 197) + '...' : p.text;
+    entries.push({
+      PROMPT_ID: uuidv4(), TITLE: p.title, DESCRIPTION: desc,
+      CATEGORY: p.cat, PROMPT_TEXT: p.text, SYSTEM_CONTEXT: SYSTEM_CTX,
+      TAGS: p.tags, PERSONA: p.persona, JOB_TYPE: p.jobType || null,
+      VERSION: 1, STATUS: 'ACTIVE', OWNER: 'SYSTEM',
+      USAGE_COUNT: 0, AVG_QUALITY_SCORE: 0, AVG_ALIGNMENT_SCORE: 0, AVG_BUSINESS_SCORE: 0,
+      IS_FAVORITE: false, IS_RECOMMENDED: p.recommended ? true : false,
+      CREATED_ON: now, UPDATED_ON: now
+    });
+  }
+
+  if (entries.length > 0) {
+    // Batch insert in chunks of 50
+    const BATCH = 50;
+    for (let i = 0; i < entries.length; i += BATCH) {
+      await db.run(INSERT.into('mae.db.PromptLibrary').entries(entries.slice(i, i + BATCH)));
+      inserted += Math.min(BATCH, entries.length - i);
+    }
+  }
+
+  cds.log('server').info(`[prompts] Inserted ${inserted} new prompt(s) — ${existingTitles.size} already existed`);
+  return inserted;
 }
 
 module.exports = cds.server;
