@@ -95,6 +95,9 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
 /* Notifications */
 #toast{position:fixed;bottom:24px;right:24px;background:#32363a;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:1000}
 #toast.show{opacity:1}
+/* Skeleton loading */
+.skeleton-row{height:16px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:4px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 /* Progress bar */
 .progress{background:#e5e5e5;border-radius:4px;height:8px;overflow:hidden}
 .progress-bar{height:100%;background:#0a6ed1;border-radius:4px;transition:width .3s}
@@ -158,6 +161,9 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
       <div class="nav-item" id="nav-customers" onclick="navTo('customers')"><span class="icon">👤</span><span class="nav-label">Customer Records</span></div>
       <div class="nav-item" id="nav-promptLib" onclick="navTo('promptLib')"><span class="icon">🧠</span><span class="nav-label">Prompt Library</span></div>
     </nav>
+    <div id="kb-hint" style="padding:8px 16px;font-size:10px;color:rgba(255,255,255,.4);margin-top:auto">
+      Ctrl+K search &nbsp;·&nbsp; Ctrl+N new job
+    </div>
   </div>
 
   <!-- Main -->
@@ -166,6 +172,7 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
       <h1>MAE (Multi-account experience) Customer Data Operations Platform</h1>
       <span class="spacer"></span>
       <span style="font-size:13px;color:#6a7988">Demo Utilities Company Inc.</span>
+      <span id="conn-dot" style="width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block" title="Checking..."></span>
       <div class="avatar">DC</div>
     </div>
     <div id="content">
@@ -188,7 +195,9 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
             <table>
               <thead><tr><th>Batch ID</th><th>Type</th><th>Status</th><th>Success/Total</th><th>Created</th></tr></thead>
               <tbody id="dashboard-jobs-body">
-                <tr><td colspan="5" style="text-align:center;color:#6a7988;padding:20px">Loading...</td></tr>
+                <tr><td colspan="5"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="5"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="5"><div class="skeleton-row"></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -284,12 +293,28 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
           <div class="panel-header">
             Active &amp; Recent Jobs
             <span style="flex:1"></span>
-            <button class="btn btn-secondary btn-sm" onclick="loadJobs()">🔄 Refresh</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportCSV(window._lastJobs||DEMO_JOBS,'jobs')">⬇ Export CSV</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadJobs()" style="margin-left:6px">🔄 Refresh</button>
+          </div>
+          <div style="display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid #f0f0f0;flex-wrap:wrap">
+            <input id="job-filter" class="form-control" placeholder="Filter by Batch ID or job type..." style="flex:1;min-width:180px;font-size:12px;padding:5px 10px" oninput="filterJobs()"/>
+            <select id="job-status-filter" class="form-control" style="width:160px;font-size:12px;padding:5px 10px" onchange="filterJobs()">
+              <option value="">All Statuses</option>
+              <option value="QUEUED">QUEUED</option>
+              <option value="IN_PROGRESS">IN PROGRESS</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="FAILED">FAILED</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('job-filter').value='';document.getElementById('job-status-filter').value='';filterJobs()">✕ Clear</button>
           </div>
           <div class="panel-body" style="padding:0;overflow-x:auto">
             <table>
               <thead><tr><th>Batch ID</th><th>Type</th><th>Status</th><th>Current Step</th><th>Progress</th><th>Records</th><th>Retries</th><th>Created</th><th>Actions</th></tr></thead>
-              <tbody id="jobs-body"><tr><td colspan="9" style="text-align:center;color:#6a7988;padding:20px">Click Refresh to load jobs</td></tr></tbody>
+              <tbody id="jobs-body">
+                <tr><td colspan="9"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="9"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="9"><div class="skeleton-row"></div></td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -324,12 +349,16 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
           <div class="panel-header">
             Failed Records
             <span style="flex:1"></span>
-            <button class="btn btn-secondary btn-sm" onclick="loadFailures()">🔄 Load Failures</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportCSV(window._lastFailures||DEMO_FAILURES,'failures')">⬇ Export CSV</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadFailures()" style="margin-left:6px">🔄 Load Failures</button>
           </div>
           <div class="panel-body" style="padding:0">
             <table>
               <thead><tr><th>Contract Account</th><th>Error Message</th><th>Retry Attempts</th><th>Action</th></tr></thead>
-              <tbody id="failures-body"><tr><td colspan="4" style="text-align:center;color:#6a7988;padding:20px">Click "Load Failures" to fetch data</td></tr></tbody>
+              <tbody id="failures-body">
+                <tr><td colspan="4"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="4"><div class="skeleton-row"></div></td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -427,7 +456,11 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
               <button class="btn btn-secondary" onclick="searchCustomers('all')">Show All</button>
             </div>
             <div id="cust-results">
-              <div style="color:#6a7988;font-size:13px;text-align:center;padding:20px">Enter a contract account number or city to search</div>
+              <table><tbody>
+                <tr><td colspan="8"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="8"><div class="skeleton-row"></div></td></tr>
+                <tr><td colspan="8"><div class="skeleton-row"></div></td></tr>
+              </tbody></table>
             </div>
           </div>
         </div>
@@ -1319,12 +1352,25 @@ function stepLabel(s) {
 }
 
 function renderJobs(jobs) {
+  window._lastJobs = jobs;
   renderDashboardJobs(jobs);
+  // Start/stop polling for active jobs
+  var hasActive = jobs.some(function(j){ return j.STATUS==='IN_PROGRESS'||j.STATUS==='RETRYING'; });
+  if (hasActive && !window._pollTimer) {
+    window._pollTimer = setInterval(function(){
+      var jmPage = document.getElementById('page-jobMonitor');
+      if (!jmPage || !jmPage.classList.contains('active')) { clearInterval(window._pollTimer); window._pollTimer=null; return; }
+      loadJobs();
+    }, 5000);
+  } else if (!hasActive && window._pollTimer) {
+    clearInterval(window._pollTimer); window._pollTimer = null;
+  }
   var tbody = document.getElementById('jobs-body');
   if (!jobs.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:#6a7988;padding:20px">No jobs found</td></tr>'; return; }
   tbody.innerHTML = jobs.map(function(j){
     var pct = j.TOTAL_ACCOUNTS ? Math.round((j.PROCESSED_ACCOUNTS||j.SUCCESS_COUNT)/j.TOTAL_ACCOUNTS*100) : 0;
     var canViewResult = ['COMPLETED','PARTIALLY_COMPLETED','FAILED'].indexOf(j.STATUS) !== -1;
+    var canCancel = j.STATUS==='QUEUED'||j.STATUS==='IN_PROGRESS';
     return '<tr>'+
       '<td style="font-family:monospace;font-size:11px">'+j.BATCH_ID.substring(0,13)+'...</td>'+
       '<td style="font-size:12px">'+j.JOB_TYPE.replace(/_/g,' ')+'</td>'+
@@ -1335,6 +1381,39 @@ function renderJobs(jobs) {
       '<td style="text-align:center;font-size:12px">'+((j.RETRY_COUNT||j.retryCount)||0)+' / 3</td>'+
       '<td style="font-size:11px;color:#6a7988">'+timeAgo(j.CREATED_ON)+'</td>'+
       '<td>'+
+        (canCancel ? '<button class="btn btn-danger btn-sm" onclick="cancelJob(\''+j.BATCH_ID+'\',\''+j.JOB_TYPE+'\')">🚫 Cancel</button> ' : '')+
+        (canViewResult ? '<button class="btn btn-secondary btn-sm" onclick="viewResult(\''+j.BATCH_ID+'\')">📄 Results</button> ' : '')+
+        '<button class="btn btn-secondary btn-sm" onclick="checkStatus(\''+j.BATCH_ID+'\')">🔄 Status</button>'+
+      '</td></tr>';
+  }).join('');
+}
+
+function filterJobs() {
+  var q = (document.getElementById('job-filter')||{}).value || '';
+  var s = (document.getElementById('job-status-filter')||{}).value || '';
+  var all = window._lastJobs || DEMO_JOBS;
+  var filtered = all.filter(function(j){
+    var matchQ = !q || j.BATCH_ID.toLowerCase().includes(q.toLowerCase()) || j.JOB_TYPE.toLowerCase().includes(q.toLowerCase());
+    var matchS = !s || j.STATUS === s;
+    return matchQ && matchS;
+  });
+  var tbody = document.getElementById('jobs-body');
+  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:#6a7988;padding:20px">No matching jobs</td></tr>'; return; }
+  tbody.innerHTML = filtered.map(function(j){
+    var pct = j.TOTAL_ACCOUNTS ? Math.round((j.PROCESSED_ACCOUNTS||j.SUCCESS_COUNT)/j.TOTAL_ACCOUNTS*100) : 0;
+    var canViewResult = ['COMPLETED','PARTIALLY_COMPLETED','FAILED'].indexOf(j.STATUS) !== -1;
+    var canCancel = j.STATUS==='QUEUED'||j.STATUS==='IN_PROGRESS';
+    return '<tr>'+
+      '<td style="font-family:monospace;font-size:11px">'+j.BATCH_ID.substring(0,13)+'...</td>'+
+      '<td style="font-size:12px">'+j.JOB_TYPE.replace(/_/g,' ')+'</td>'+
+      '<td>'+statusBadge(j.STATUS)+'</td>'+
+      '<td style="font-size:11px;color:#6a7988">'+stepLabel(j.CURRENT_STEP)+'</td>'+
+      '<td><div class="progress" style="width:70px;display:inline-block;vertical-align:middle"><div class="progress-bar" style="width:'+pct+'%"></div></div><span style="font-size:11px;color:#6a7988;margin-left:4px">'+pct+'%</span></td>'+
+      '<td style="font-size:12px">'+(j.SUCCESS_COUNT||0)+' ✅ / '+(j.FAILED_COUNT||0)+' ❌</td>'+
+      '<td style="text-align:center;font-size:12px">'+((j.RETRY_COUNT||j.retryCount)||0)+' / 3</td>'+
+      '<td style="font-size:11px;color:#6a7988">'+timeAgo(j.CREATED_ON)+'</td>'+
+      '<td>'+
+        (canCancel ? '<button class="btn btn-danger btn-sm" onclick="cancelJob(\''+j.BATCH_ID+'\',\''+j.JOB_TYPE+'\')">🚫 Cancel</button> ' : '')+
         (canViewResult ? '<button class="btn btn-secondary btn-sm" onclick="viewResult(\''+j.BATCH_ID+'\')">📄 Results</button> ' : '')+
         '<button class="btn btn-secondary btn-sm" onclick="checkStatus(\''+j.BATCH_ID+'\')">🔄 Status</button>'+
       '</td></tr>';
@@ -1416,6 +1495,7 @@ function loadFailures() {
 }
 
 function renderFailures(failures) {
+  window._lastFailures = failures;
   var tbody = document.getElementById('failures-body');
   if (!failures.length) { tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#6a7988;padding:20px">No failures found ✅</td></tr>'; return; }
   tbody.innerHTML = failures.map(function(f){
@@ -1800,7 +1880,7 @@ function executeCustomerUpdate(contractAccount, encodedAddr, asJob) {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({streetAddress:addr.street, city:addr.city, stateCode:addr.state, zipCode:addr.zip})
     }).then(function(r){return r.json();})
-    .then(function(){ toast('✅ Address saved for '+contractAccount); searchCustomers(); })
+    .then(function(){ toast('✅ Address saved for '+contractAccount); searchCustomers('all'); })
     .catch(function(){
       DEMO_CUSTOMERS.forEach(function(c){
         if(c.CONTRACT_ACCOUNT===contractAccount){
@@ -1808,7 +1888,7 @@ function executeCustomerUpdate(contractAccount, encodedAddr, asJob) {
         }
       });
       toast('✅ Demo: Address saved for '+contractAccount);
-      searchCustomers();
+      searchCustomers('all');
     });
   }
 }
@@ -2042,10 +2122,56 @@ function runPromptTest(promptId) {
     }).catch(function(){ toast('🧪 Test error — backend unreachable'); });
 }
 
+// ── CSV Export (generic) ──────────────────────────────────────────────────────
+function exportCSV(data, filename) {
+  if (!data || !data.length) { toast('No data to export'); return; }
+  var keys = Object.keys(data[0]);
+  var hdr = keys.join(',');
+  var rows = data.map(function(r){ return keys.map(function(k){ return '"'+String(r[k]!=null?r[k]:'').replace(/"/g,'""')+'"'; }).join(','); });
+  var csv = [hdr].concat(rows).join('\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href=url; a.download=filename+'-'+Date.now()+'.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ Exported '+data.length+' rows');
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  var ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl && e.key === 'k') {
+    e.preventDefault();
+    var activePage = document.querySelector('.page.active');
+    if (!activePage) return;
+    var pid = activePage.id;
+    var inp = pid==='page-customers' ? document.getElementById('cust-search') :
+              pid==='page-jobMonitor' ? document.getElementById('job-filter') :
+              pid==='page-promptLib' ? document.getElementById('prompt-search') :
+              pid==='page-bulkRead' ? document.getElementById('br-search') : null;
+    if (inp) { inp.focus(); inp.select(); }
+  }
+  if (ctrl && e.key === 'n') { e.preventDefault(); navTo('createJob'); }
+  if (e.key === 'Escape') { closeModal(); }
+});
+
+// ── Backend connectivity indicator ────────────────────────────────────────────
+function checkConnectivity() {
+  fetch('/api/health').then(function(r){
+    var dot = document.getElementById('conn-dot');
+    if (dot) { dot.style.background = r.ok ? '#107e3e' : '#bb0000'; dot.title = r.ok ? 'Backend connected' : 'Backend unreachable — demo mode'; }
+  }).catch(function(){
+    var dot = document.getElementById('conn-dot');
+    if (dot) { dot.style.background = '#bb0000'; dot.title = 'Backend unreachable — demo mode'; }
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
-loadJobs();
+renderDashboardJobs(DEMO_JOBS);
 loadKPIs();
 setInterval(loadKPIs, 30000);
+checkConnectivity();
+setInterval(checkConnectivity, 30000);
 </script>
 </body>
 </html>
