@@ -44,12 +44,19 @@ sap.ui.define([
     },
 
     _applyFilters: function () {
+      const oTable = this.byId("jobsTable");
+      if (!oTable) return;
+      const oBinding = oTable.getBinding("rows");
+      if (!oBinding) {
+        oTable.attachEventOnce("modelContextChange", this._applyFilters.bind(this));
+        return;
+      }
       const statusSel = this.byId("statusFilter").getSelectedKey();
       const filters = [];
       if (statusSel && statusSel !== "ALL") {
         filters.push(new Filter("STATUS", FilterOperator.EQ, statusSel));
       }
-      this.byId("jobsTable").getBinding("rows").filter(filters);
+      oBinding.filter(filters);
     },
 
     onSearch: function (oEvent) {
@@ -68,19 +75,19 @@ sap.ui.define([
     },
 
     onViewDetails: function (oEvent) {
-      const context = oEvent.getSource().getParent().getParent().getBindingContext();
+      const context = oEvent.getSource().getBindingContext();
       const batchId = context.getProperty("BATCH_ID");
       MessageToast.show(`Viewing details for: ${batchId}`);
     },
 
     onViewFailures: function (oEvent) {
-      const context = oEvent.getSource().getParent().getParent().getBindingContext();
+      const context = oEvent.getSource().getBindingContext();
       const batchId = context.getProperty("BATCH_ID");
       this.getOwnerComponent().getRouter().navTo("failureAnalysis", { batchId });
     },
 
     onCancelJob: async function (oEvent) {
-      const context = oEvent.getSource().getParent().getParent().getBindingContext();
+      const context = oEvent.getSource().getBindingContext();
       const batchId = context.getProperty("BATCH_ID");
 
       MessageBox.confirm(`Cancel job ${batchId}?`, {
@@ -99,7 +106,7 @@ sap.ui.define([
     },
 
     onReprocess: async function (oEvent) {
-      const context = oEvent.getSource().getParent().getParent().getBindingContext();
+      const context = oEvent.getSource().getBindingContext();
       const batchId = context.getProperty("BATCH_ID");
       const failedCount = context.getProperty("FAILED_COUNT");
 

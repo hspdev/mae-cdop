@@ -60,18 +60,21 @@ class MailingAddressHandler extends IBulkJobHandler {
   // ── Step 2: Load Records ──────────────────────────────────────────────────
   async loadRecords() {
     let contractAccounts = this.parameters.contractAccounts || [];
+    let records;
 
-    // If filter provided instead of account list, run HANA procedure
+    // If filter provided, load via city/days filter (SQLite-compatible)
     if (contractAccounts.length === 0 && this.parameters.filter) {
-      const filter = this.parameters.filter;
-      contractAccounts = await this._loadByFilter(filter);
+      const client = new BatchQueryClient(this.db);
+      const city     = this.parameters.filter.city || 'Allentown';
+      const daysBack = this.parameters.filter.daysBack || 90;
+      records = await client.loadCustomersByCity(city, daysBack);
+      contractAccounts = records.map(r => r.CONTRACT_ACCOUNT || r.contractAccount).filter(Boolean);
+    } else {
+      const client = new BatchQueryClient(this.db);
+      records = await client.loadContractAccounts(contractAccounts);
     }
 
-    this.logger.info(`[${this.batchId}] Loading ${contractAccounts.length} contract accounts`);
-
-    // Use BatchQueryClient — set-based HANA retrieval, no large OR filters
-    const client = new BatchQueryClient(this.db);
-    const records = await client.loadContractAccounts(contractAccounts);
+    this.logger.info(`[${this.batchId}] Loading ${records.length} contract accounts`);
 
     this.records = records;
     this.contractAccounts = contractAccounts;
@@ -84,18 +87,6 @@ class MailingAddressHandler extends IBulkJobHandler {
     );
 
     return { count: records.length, records };
-  }
-
-  async _loadByFilter(filter) {
-    // DUCI demo: use HANA procedure P_GET_ALLENTOWN_CUSTOMERS
-    const daysBack = filter.daysBack || 90;
-    const city = filter.city || 'Allentown';
-
-    const result = await this.db.run(
-      `CALL P_GET_ALLENTOWN_CUSTOMERS('${city}', ${daysBack}, ?)`
-    );
-    const raw = result[0]?.OT_RESULT || '[]';
-    return JSON.parse(raw);
   }
 
   // ── Step 3: Process ───────────────────────────────────────────────────────
@@ -197,13 +188,14 @@ class MailingAddressHandler extends IBulkJobHandler {
       return p.newAddress;
     }
 
-    // Option 3: use latest address history record
+    // Option 3: use latest address history record (attached by loadCustomersByCity as record.newAddress)
     if (p.useExistingAddressHistory) {
+      const hist = record.newAddress;
       return {
-        streetAddress: record.newStreetAddress || record.streetAddress,
-        city:          record.newCity || record.city,
-        stateCode:     record.newStateCode || record.stateCode,
-        zipCode:       record.newZipCode || record.zipCode
+        streetAddress: hist?.newStreetAddress || hist?.NEW_STREET_ADDRESS || record.streetAddress || record.STREET_ADDRESS,
+        city:          hist?.newCity          || hist?.NEW_CITY           || record.city          || record.CITY,
+        stateCode:     hist?.newStateCode     || hist?.NEW_STATE_CODE     || record.stateCode     || record.STATE_CODE,
+        zipCode:       hist?.newZipCode       || hist?.NEW_ZIP_CODE       || record.zipCode       || record.ZIP_CODE
       };
     }
 

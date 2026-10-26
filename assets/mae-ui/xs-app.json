@@ -2,6 +2,12 @@
   "authenticationMethod": "none",
   "routes": [
     {
+      "source": "^/health$",
+      "target": "/health",
+      "destination": "mae-cap-backend",
+      "authenticationType": "none"
+    },
+    {
       "source": "^/api/(.*)$",
       "target": "/api/$1",
       "destination": "mae-cap-backend",

@@ -1,9 +1,11 @@
 sap.ui.define([
   "sap/ui/core/mvc/Controller",
   "sap/ui/model/json/JSONModel",
+  "sap/ui/model/Filter",
+  "sap/ui/model/FilterOperator",
   "sap/m/MessageToast",
   "com/duci/mae/cdop/service/BulkJobService"
-], function (Controller, JSONModel, MessageToast, BulkJobService) {
+], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, BulkJobService) {
   "use strict";
 
   return Controller.extend("com.duci.mae.cdop.controller.Dashboard", {
@@ -17,45 +19,82 @@ sap.ui.define([
           failedJobs: 0,
           hoursSaved: 0,
           aiRecoveries: 0,
-          costAvoidance: 0
+          costAvoidance: 0,
+          totalAccounts: 0
         },
-        loading: true
+        loading: true,
+        lastRefresh: null,
+        error: null
       });
       this.getView().setModel(dashboardModel, "dashboard");
       this._loadKPIs();
       this._startAutoRefresh();
+      // Apply list filters after view is rendered
+      setTimeout(() => this._applyDashboardListFilters(), 0);
+
+      const router = this.getOwnerComponent().getRouter();
+      router.getRoute("dashboard").attachPatternMatched(this._onRouteMatched, this);
+    },
+
+    _onRouteMatched: function () {
+      this._loadKPIs();
+      this._applyDashboardListFilters();
     },
 
     _loadKPIs: async function () {
+      const model = this.getView().getModel("dashboard");
+      model.setProperty("/loading", true);
       try {
-        const now     = new Date();
-        const from30  = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        const summary = await BulkJobService.getExecutiveSummary(
+        const now    = new Date();
+        const from30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const data   = await BulkJobService.getExecutiveSummary(
           from30.toISOString().substring(0, 10),
           now.toISOString().substring(0, 10)
-        ).catch(() => null);
+        );
+        const s = (data && data.summary) ? data.summary : {};
 
-        const data    = summary && (typeof summary === 'string' ? JSON.parse(summary) : summary);
-        const s       = data?.summary || {};
-
-        // Use demo seed data when backend returns no results
-        const demoKpi = {
-          recordsModernized: s.totalSuccess > 0 ? Math.round(s.totalSuccess / 1000) : 87,
-          successRate:       s.overallSuccessRate ? parseFloat(s.overallSuccessRate) : 94.2,
-          jobsCompleted:     s.completedJobs || 12,
-          failedJobs:        s.failedJobs || 2,
-          hoursSaved:        s.estimatedHoursSaved || 340,
-          aiRecoveries:      s.totalSuccess > 0 ? Math.round(s.totalSuccess * 0.15) : 1842,
-          costAvoidance:     s.totalSuccess > 0 ? Math.round(s.totalSuccess * 0.12) : 52400
-        };
-
-        this.getView().getModel("dashboard").setData({
-          kpi: demoKpi,
-          loading: false
+        model.setData({
+          kpi: {
+            recordsModernized: Math.round((s.totalSuccess || 0) / 1000),
+            successRate:       s.overallSuccessRate  || 0,
+            jobsCompleted:     s.completedJobs       || 0,
+            failedJobs:        s.failedJobs          || 0,
+            hoursSaved:        s.estimatedHoursSaved || 0,
+            aiRecoveries:      s.aiRecoveries        || 0,
+            costAvoidance:     Math.round((s.costAvoidance || 0) / 1000),
+            totalAccounts:     s.totalAccounts       || 0
+          },
+          loading: false,
+          lastRefresh: now.toLocaleTimeString(),
+          error: null
         });
       } catch (err) {
         console.error('KPI load failed:', err);
-        this.getView().getModel("dashboard").setProperty("/loading", false);
+        model.setProperty("/loading", false);
+        model.setProperty("/error", err.message);
+      }
+    },
+
+    _applyDashboardListFilters: function () {
+      const oList = this.byId("activeJobsList");
+      if (oList) {
+        const oBinding = oList.getBinding("items");
+        if (oBinding) {
+          oBinding.filter([new Filter("STATUS", FilterOperator.EQ, "IN_PROGRESS")]);
+        }
+      }
+      const oRecentList = this.byId("recentJobsList");
+      if (oRecentList) {
+        const oBinding = oRecentList.getBinding("items");
+        if (oBinding) {
+          oBinding.filter([new Filter({
+            filters: [
+              new Filter("STATUS", FilterOperator.EQ, "COMPLETED"),
+              new Filter("STATUS", FilterOperator.EQ, "PARTIALLY_COMPLETED")
+            ],
+            and: false
+          })]);
+        }
       }
     },
 

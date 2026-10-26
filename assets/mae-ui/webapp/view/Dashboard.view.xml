@@ -15,6 +15,7 @@
         </contentLeft>
         <contentRight>
           <Button text="Refresh" icon="sap-icon://refresh" press=".onRefresh"/>
+          <Text text="{= ${dashboard>/lastRefresh} ? 'Updated: ' + ${dashboard>/lastRefresh} : ''}" class="sapUiSmallMarginBegin"/>
           <Button text="New Job" type="Emphasized" icon="sap-icon://add" press=".onCreateJob"/>
         </contentRight>
       </Bar>
@@ -36,7 +37,7 @@
 
         <f:header>
           <f:DynamicPageHeader pinnable="true">
-            <l:Grid defaultSpan="XL2 L4 M6 S12" class="sapUiSmallMargin">
+            <l:Grid defaultSpan="XL2 L4 M6 S12" class="sapUiSmallMargin" busy="{dashboard>/loading}" busyIndicatorDelay="0">
               <!-- Hero KPI -->
               <GenericTile
                 id="kpiRecordsModernized"
@@ -114,7 +115,7 @@
             <Panel headerText="Active Jobs" expandable="true" expanded="true">
               <List
                 id="activeJobsList"
-                items="{path: '/BatchJobs', filters: [{path: 'STATUS', operator: 'EQ', value1: 'IN_PROGRESS'}]}"
+                items="{path: '/BatchJobs', sorter: {path: 'LAST_UPDATE', descending: true}}"
                 noDataText="No active jobs"
                 growing="true"
                 growingThreshold="5">

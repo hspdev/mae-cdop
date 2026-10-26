@@ -102,6 +102,20 @@ class BulkJobEngine {
       retryCount:     job.RETRY_COUNT
     };
 
+    // Create Z_JOB_TRACK entry for this execution
+    const requestId = uuidv4();
+    await this.db.run(
+      INSERT.into('mae.db.JobTrack').entries({
+        REQUEST_ID:   requestId,
+        BATCH_ID:     batchId,
+        CURRENT_STEP: 'REQUEST_RECEIVED',
+        STATUS:       'IN_PROGRESS',
+        RETRY_COUNT:  job.RETRY_COUNT || 0,
+        START_TIME:   new Date().toISOString(),
+        LAST_UPDATE:  new Date().toISOString()
+      })
+    );
+
     // Mark IN_PROGRESS
     await this._updateJobStatus(batchId, 'IN_PROGRESS', 'VALIDATING_REQUEST');
 
@@ -162,6 +176,16 @@ class BulkJobEngine {
         }).where({ BATCH_ID: batchId })
       );
 
+      // Update JobTrack with final completion status
+      await this.db.run(
+        UPDATE('mae.db.JobTrack').set({
+          STATUS:       finalStatus,
+          CURRENT_STEP: 'COMPLETED',
+          END_TIME:     new Date().toISOString(),
+          LAST_UPDATE:  new Date().toISOString()
+        }).where({ BATCH_ID: batchId })
+      ).catch(() => {});
+
       // Record performance metrics
       await this._recordMetrics(batchId, { count, durationSec, throughput });
 
@@ -208,11 +232,9 @@ class BulkJobEngine {
     // If onlyFailed, load only the failed contract accounts
     if (onlyFailed) {
       const failures = await this.db.run(
-        SELECT.from('mae.db.BatchJobFailureLogs')
-          .where({ BATCH_ID: batchId, RESOLVED: false })
-          .columns('CONTRACT_ACCOUNT')
+        SELECT.from('mae.db.BatchJobFailureLogs').where({ BATCH_ID: batchId, RESOLVED: false })
       );
-      originalParams.contractAccounts = failures.map(f => f.CONTRACT_ACCOUNT);
+      originalParams.contractAccounts = failures.map(f => f.contractAccount || f.CONTRACT_ACCOUNT).filter(Boolean);
     }
 
     const newSim = typeof simulationMode !== 'undefined' ? simulationMode : original.SIMULATION_MODE;
@@ -239,33 +261,85 @@ class BulkJobEngine {
   }
 
   async _setStep(batchId, step) {
+    const now = new Date().toISOString();
     await this.db.run(
       UPDATE('mae.db.BatchJobs')
-        .set({ CURRENT_STEP: step, LAST_UPDATE: new Date().toISOString() })
+        .set({ CURRENT_STEP: step, LAST_UPDATE: now })
         .where({ BATCH_ID: batchId })
     );
+    // Mirror step change into JobTrack
+    await this.db.run(
+      UPDATE('mae.db.JobTrack')
+        .set({ CURRENT_STEP: step, LAST_UPDATE: now })
+        .where({ BATCH_ID: batchId })
+    ).catch(() => {}); // non-fatal if row absent
   }
 
   async _failJob(batchId, errorMessage) {
-    await this.db.run(
-      UPDATE('mae.db.BatchJobs')
-        .set({
-          STATUS:       'FAILED',
-          LAST_UPDATE:  new Date().toISOString(),
-          COMPLETED_ON: new Date().toISOString()
-        })
-        .where({ BATCH_ID: batchId })
+    // Fetch current retry count to decide whether to retry or permanently fail
+    const job = await this.db.run(
+      SELECT.one.from('mae.db.BatchJobs').where({ BATCH_ID: batchId })
     );
+    const currentRetryCount = (job && job.RETRY_COUNT) || 0;
 
-    await this.db.run(
-      UPDATE('mae.db.JobTrack')
-        .set({
-          STATUS:      'FAILED',
-          LAST_ERROR:  errorMessage,
-          LAST_UPDATE: new Date().toISOString()
-        })
-        .where({ BATCH_ID: batchId })
-    );
+    if (RetryFramework.shouldRetry(currentRetryCount)) {
+      // Set RETRYING status and increment RETRY_COUNT
+      const newRetryCount = currentRetryCount + 1;
+      const retryDelay    = RetryFramework.getDelay(currentRetryCount);
+
+      await this.db.run(
+        UPDATE('mae.db.BatchJobs')
+          .set({
+            STATUS:       'RETRYING',
+            RETRY_COUNT:  newRetryCount,
+            LAST_UPDATE:  new Date().toISOString()
+          })
+          .where({ BATCH_ID: batchId })
+      );
+
+      await this.db.run(
+        UPDATE('mae.db.JobTrack')
+          .set({
+            STATUS:      'RETRYING',
+            RETRY_COUNT: newRetryCount,
+            LAST_ERROR:  errorMessage,
+            LAST_UPDATE: new Date().toISOString()
+          })
+          .where({ BATCH_ID: batchId })
+      ).catch(() => {});
+
+      logger.warn(`[${batchId}] Scheduling retry ${newRetryCount}/${RetryFramework.maxRetries} in ${retryDelay}ms`);
+
+      // Re-queue the job after delay (non-blocking)
+      setTimeout(() => {
+        this.executeJob(batchId).catch(err => {
+          logger.error(`[${batchId}] Retry ${newRetryCount} failed: ${err.message}`);
+        });
+      }, retryDelay);
+
+    } else {
+      // Max retries exhausted — mark permanently FAILED
+      await this.db.run(
+        UPDATE('mae.db.BatchJobs')
+          .set({
+            STATUS:       'FAILED',
+            LAST_UPDATE:  new Date().toISOString(),
+            COMPLETED_ON: new Date().toISOString()
+          })
+          .where({ BATCH_ID: batchId })
+      );
+
+      await this.db.run(
+        UPDATE('mae.db.JobTrack')
+          .set({
+            STATUS:      'FAILED',
+            LAST_ERROR:  errorMessage,
+            END_TIME:    new Date().toISOString(),
+            LAST_UPDATE: new Date().toISOString()
+          })
+          .where({ BATCH_ID: batchId })
+      ).catch(() => {});
+    }
   }
 
   async _recordMetrics(batchId, { count, durationSec, throughput }) {

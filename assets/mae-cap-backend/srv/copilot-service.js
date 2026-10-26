@@ -17,6 +17,10 @@ const cds       = require('@sap/cds');
 const { v4: uuidv4 } = require('uuid');
 const axios     = require('axios');
 
+// ── Model / Deployment configuration ─────────────────────────────────────────
+const MODEL         = process.env.AI_MODEL         || 'gpt-4o';
+const DEPLOYMENT_ID = process.env.AI_DEPLOYMENT_ID || MODEL;
+
 // ── System Prompt for Operations Copilot ─────────────────────────────────────
 const SYSTEM_PROMPT = `You are the DUCI Operations Copilot for Demo Utilities Company Inc.
 You assist operations teams with bulk customer data management.
@@ -146,18 +150,36 @@ module.exports = class CopilotServiceHandler extends cds.ApplicationService {
     await super.init();
   }
 
+  _getAICoreCredentials() {
+    // CF: read from VCAP_SERVICES (bound aicore service instance)
+    if (process.env.VCAP_SERVICES) {
+      try {
+        const vcap = JSON.parse(process.env.VCAP_SERVICES);
+        const aicore = vcap['aicore'] || vcap['AICORE_SERVICE'] || [];
+        if (aicore.length > 0) {
+          return aicore[0].credentials;
+        }
+      } catch {}
+    }
+    // Local dev: read from AICORE_SERVICE_KEY env var
+    if (process.env.AICORE_SERVICE_KEY) {
+      try {
+        return JSON.parse(process.env.AICORE_SERVICE_KEY);
+      } catch {}
+    }
+    return null;
+  }
+
   async _callGenAIHub(messages) {
     // SAP AI Core / Generative AI Hub endpoint
-    // Reads credentials from VCAP_SERVICES bound aicore service
-    const aiCoreEnv = process.env.AICORE_SERVICE_KEY
-      ? JSON.parse(process.env.AICORE_SERVICE_KEY)
-      : null;
+    // Reads credentials from VCAP_SERVICES (CF) or AICORE_SERVICE_KEY (local dev)
+    const credentials = this._getAICoreCredentials();
 
-    if (!aiCoreEnv) {
-      throw new Error('AICORE_SERVICE_KEY not configured');
+    if (!credentials) {
+      throw new Error('AI Core credentials not configured. Set VCAP_SERVICES (CF) or AICORE_SERVICE_KEY (local).');
     }
 
-    const { url, clientid, clientsecret, tokenurl } = aiCoreEnv;
+    const { url, clientid, clientsecret, tokenurl } = credentials;
 
     // Get OAuth token
     const tokenResponse = await axios.post(
@@ -167,9 +189,9 @@ module.exports = class CopilotServiceHandler extends cds.ApplicationService {
     );
     const token = tokenResponse.data.access_token;
 
-    // Call completions endpoint
+    // Call completions endpoint using resolved DEPLOYMENT_ID / MODEL constants
     const completionResponse = await axios.post(
-      `${url}/v2/inference/deployments/${process.env.AI_DEPLOYMENT_ID || 'gpt-4o'}/chat/completions`,
+      `${url}/v2/inference/deployments/${DEPLOYMENT_ID}/chat/completions`,
       {
         messages,
         max_tokens: 2000,

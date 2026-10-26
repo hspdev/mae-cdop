@@ -55,6 +55,19 @@ sap.ui.define([
         model.setProperty("/successRate", successRate);
         model.setProperty("/totalFailures", result.failedCount || 0);
         model.setProperty("/errorPatterns", patterns);
+
+        // Apply BATCH_ID filter to failuresTable programmatically
+        const oTable = this.byId("failuresTable");
+        if (oTable) {
+          const oBinding = oTable.getBinding("rows");
+          if (oBinding) {
+            oBinding.filter([new Filter("BATCH_ID", FilterOperator.EQ, batchId)]);
+          } else {
+            oTable.attachEventOnce("modelContextChange", () => {
+              oTable.getBinding("rows")?.filter([new Filter("BATCH_ID", FilterOperator.EQ, batchId)]);
+            });
+          }
+        }
       } catch (err) {
         MessageBox.error(`Failed to load job data: ${err.message}`);
       }

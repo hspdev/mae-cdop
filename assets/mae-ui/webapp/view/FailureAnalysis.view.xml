@@ -38,11 +38,11 @@
             items="{failure>/errorPatterns}"
             noDataText="No errors to analyze">
             <ObjectListItem
-              title="{failure>/errorPatterns/errorCode}"
-              number="{failure>/errorPatterns/count}"
+              title="{errorCode}"
+              number="{count}"
               numberUnit="occurrences">
               <attributes>
-                <ObjectAttribute title="Sample Error" text="{failure>/errorPatterns/sample}"/>
+                <ObjectAttribute title="Sample Error" text="{sample}"/>
               </attributes>
             </ObjectListItem>
           </List>
@@ -57,7 +57,7 @@
           </Toolbar>
           <t:Table
             id="failuresTable"
-            rows="{path: '/BatchJobFailureLogs', filters: [{path: 'BATCH_ID', operator: 'EQ', value1: '{failure>/batchId}'}]}"
+            rows="{path: '/BatchJobFailureLogs'}"
             visibleRowCount="15"
             alternateRowColors="true"
             enableBusyIndicator="true">

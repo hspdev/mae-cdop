@@ -31,20 +31,17 @@ sap.ui.define([], function () {
     getBatchCustomers: (contractAccounts) => _fetch("/customers/batch", { method: "POST", body: JSON.stringify({ contractAccounts }) }),
 
     getExecutiveSummary: async (fromDate, toDate) => {
-      // Uses OData action via fetch
-      const res = await fetch("/odata/v4/BulkJobService/getExecutiveSummary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromDate, toDate })
-      });
-      if (!res.ok) throw new Error(res.statusText);
-      const data = await res.json();
-      return data.value;
+      const from = fromDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+      const to   = toDate   || new Date().toISOString().substring(0, 10);
+      return _fetch(`/summary?fromDate=${encodeURIComponent(from)}&toDate=${encodeURIComponent(to)}`);
     },
 
-    getPerformanceMetrics: () => fetch("/odata/v4/BulkJobService/PerformanceMetrics?$top=100&$orderby=RECORDED_AT desc")
-      .then(r => r.json())
-      .then(d => d.value || []),
+    getPerformanceMetrics: async () => {
+      const res = await fetch('/odata/v4/BulkJobService/PerformanceMetrics?$top=100&$orderby=RECORDED_AT%20desc');
+      if (!res.ok) return [];
+      const d = await res.json();
+      return d.value || [];
+    },
 
     validateJob: async (payload) => {
       // Client-side pre-validation before API call

@@ -109,6 +109,33 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
 .editable:hover{background:#e8f0fe;border-radius:3px}
 /* Responsive */
 @media(max-width:768px){#sidebar{width:56px}.nav-label{display:none}#sidebar-header .logo{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+/* Prompt Library */
+.prompt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px}
+.prompt-card{background:#fff;border-radius:8px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:3px solid #0a6ed1;display:flex;flex-direction:column;gap:10px}
+.prompt-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.prompt-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.prompt-card-title{font-size:14px;font-weight:600;color:#32363a;flex:1}
+.prompt-category-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:#e8f0fe;color:#0a6ed1;white-space:nowrap}
+.prompt-tags{display:flex;flex-wrap:wrap;gap:4px}
+.prompt-tag{padding:2px 8px;border-radius:10px;font-size:10px;background:#f5f6fa;color:#6a7988;border:1px solid #e5e5e5}
+.prompt-actions{display:flex;gap:6px;margin-top:auto}
+.prompt-text-preview{font-size:12px;color:#6a7988;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.category-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.category-pill{padding:5px 14px;border-radius:20px;border:1px solid #d9d9d9;background:#fff;color:#32363a;font-size:12px;cursor:pointer;transition:all .15s}
+.category-pill:hover{background:#e8f0fe;border-color:#0a6ed1;color:#0a6ed1}
+.category-pill.active{background:#0a6ed1;color:#fff;border-color:#0a6ed1}
+.score-gauge{display:flex;flex-direction:column;align-items:center;gap:3px}
+.score-gauge-value{font-size:24px;font-weight:700}
+.score-gauge-label{font-size:10px;color:#6a7988;text-align:center}
+.score-gauges{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:16px 0}
+.exec-response{background:#f8f9fa;border-radius:8px;padding:16px;font-size:13px;line-height:1.7;min-height:80px;white-space:pre-wrap;word-break:break-word}
+.prompt-tabs{display:flex;gap:0;border-bottom:2px solid #e5e5e5;margin-bottom:16px}
+.prompt-tab{padding:10px 20px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:#6a7988}
+.prompt-tab.active{color:#0a6ed1;border-bottom-color:#0a6ed1;font-weight:600}
+.star-btn{background:none;border:none;cursor:pointer;font-size:18px;opacity:.5;transition:opacity .15s}
+.star-btn.active{opacity:1}
+.fav-badge{background:#fff3e0;color:#e9730c}
+.rec-badge{background:#e8f5e9;color:#107e3e}
 </style>
 </head>
 <body>
@@ -120,14 +147,15 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
       <span class="logo">MAE Platform</span>
     </div>
     <nav>
-      <div class="nav-item active" onclick="navTo('dashboard')"><span class="icon">🏠</span><span class="nav-label">Dashboard</span></div>
-      <div class="nav-item" onclick="navTo('copilot')"><span class="icon">🤖</span><span class="nav-label">Operations Copilot</span></div>
-      <div class="nav-item" onclick="navTo('createJob')"><span class="icon">➕</span><span class="nav-label">Create Job</span></div>
-      <div class="nav-item" onclick="navTo('jobMonitor')"><span class="icon">📋</span><span class="nav-label">Job Monitor</span></div>
-      <div class="nav-item" onclick="navTo('failureAnalysis')"><span class="icon">⚠️</span><span class="nav-label">Failure Analysis</span></div>
-      <div class="nav-item" onclick="navTo('executive')"><span class="icon">📊</span><span class="nav-label">Executive Summary</span></div>
-      <div class="nav-item" onclick="navTo('insights')"><span class="icon">⚡</span><span class="nav-label">Platform Insights</span></div>
-      <div class="nav-item" onclick="navTo('customers')"><span class="icon">👤</span><span class="nav-label">Customer Records</span></div>
+      <div class="nav-item active" id="nav-dashboard" onclick="navTo('dashboard')"><span class="icon">🏠</span><span class="nav-label">Dashboard</span></div>
+      <div class="nav-item" id="nav-copilot" onclick="navTo('copilot')"><span class="icon">🤖</span><span class="nav-label">Operations Copilot</span></div>
+      <div class="nav-item" id="nav-createJob" onclick="navTo('createJob')"><span class="icon">➕</span><span class="nav-label">Create Job</span></div>
+      <div class="nav-item" id="nav-jobMonitor" onclick="navTo('jobMonitor')"><span class="icon">📋</span><span class="nav-label">Job Monitor</span></div>
+      <div class="nav-item" id="nav-failureAnalysis" onclick="navTo('failureAnalysis')"><span class="icon">⚠️</span><span class="nav-label">Failure Analysis</span></div>
+      <div class="nav-item" id="nav-executive" onclick="navTo('executive')"><span class="icon">📊</span><span class="nav-label">Executive Summary</span></div>
+      <div class="nav-item" id="nav-insights" onclick="navTo('insights')"><span class="icon">⚡</span><span class="nav-label">Platform Insights</span></div>
+      <div class="nav-item" id="nav-customers" onclick="navTo('customers')"><span class="icon">👤</span><span class="nav-label">Customer Records</span></div>
+      <div class="nav-item" id="nav-promptLib" onclick="navTo('promptLib')"><span class="icon">🧠</span><span class="nav-label">Prompt Library</span></div>
     </nav>
   </div>
 
@@ -145,12 +173,12 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
       <div id="page-dashboard" class="page active">
         <div class="page-title">Home Dashboard</div>
         <div class="kpi-grid">
-          <div class="kpi-card green" onclick="navTo('executive')" title="View Executive Summary"><div class="kpi-value">87K</div><div class="kpi-label">Records Modernized</div><div class="kpi-sub">Target: 100,000 →</div></div>
-          <div class="kpi-card green" onclick="navTo('executive')" title="View Executive Summary"><div class="kpi-value">94.2%</div><div class="kpi-label">Success Rate</div><div class="kpi-sub">Last 30 days →</div></div>
-          <div class="kpi-card" onclick="navTo('jobMonitor')" title="Open Job Monitor"><div class="kpi-value">12</div><div class="kpi-label">Jobs Completed</div><div class="kpi-sub">View all jobs →</div></div>
-          <div class="kpi-card" onclick="navTo('insights')" title="View Platform Insights"><div class="kpi-value">340h</div><div class="kpi-label">Hours Saved</div><div class="kpi-sub">See benchmarks →</div></div>
-          <div class="kpi-card green" onclick="navTo('failureAnalysis')" title="View Failure Analysis"><div class="kpi-value">1,842</div><div class="kpi-label">AI Recoveries</div><div class="kpi-sub">View failures →</div></div>
-          <div class="kpi-card green" onclick="navTo('executive')" title="View Executive Summary"><div class="kpi-value">$52K</div><div class="kpi-label">Cost Avoidance</div><div class="kpi-sub">Full report →</div></div>
+          <div class="kpi-card green" onclick="navTo('executive')" title="View Executive Summary"><div class="kpi-value" id="kpi-records">—</div><div class="kpi-label">Records Modernized</div><div class="kpi-sub">Target: 100,000 →</div></div>
+          <div class="kpi-card green" onclick="navTo('executive')" title="View Executive Summary"><div class="kpi-value" id="kpi-rate">—</div><div class="kpi-label">Success Rate</div><div class="kpi-sub">Last 30 days →</div></div>
+          <div class="kpi-card" onclick="navTo('jobMonitor')" title="Open Job Monitor"><div class="kpi-value" id="kpi-jobs">—</div><div class="kpi-label">Jobs Completed</div><div class="kpi-sub">View all jobs →</div></div>
+          <div class="kpi-card" onclick="navTo('insights')" title="View Platform Insights"><div class="kpi-value" id="kpi-hours">—</div><div class="kpi-label">Hours Saved</div><div class="kpi-sub">See benchmarks →</div></div>
+          <div class="kpi-card green" onclick="navTo('failureAnalysis')" title="View Failure Analysis"><div class="kpi-value" id="kpi-ai">—</div><div class="kpi-label">AI Recoveries</div><div class="kpi-sub">View failures →</div></div>
+          <div class="kpi-card green" onclick="navTo('executive')" title="View Executive Summary"><div class="kpi-value" id="kpi-cost">—</div><div class="kpi-label">Cost Avoidance</div><div class="kpi-sub">Full report →</div></div>
         </div>
 
         <div class="panel">
@@ -172,6 +200,19 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
             <button class="btn btn-secondary" onclick="navTo('copilot')">🤖 Open Copilot</button>
             <button class="btn btn-secondary" onclick="navTo('jobMonitor')">📋 View Job Monitor</button>
             <button class="btn btn-secondary" onclick="navTo('executive')">📊 Executive Report</button>
+            <button class="btn btn-secondary" onclick="navTo('promptLib')">🧠 Prompt Library</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">🤖 AI Operations KPIs</div>
+          <div class="panel-body">
+            <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
+              <div class="kpi-card" onclick="navTo('promptLib')"><div class="kpi-value" id="kpi-prompt-executions">—</div><div class="kpi-label">Prompt Executions</div></div>
+              <div class="kpi-card green" onclick="navTo('promptLib')"><div class="kpi-value" id="kpi-prompt-rate">—</div><div class="kpi-label">Prompt Success Rate</div></div>
+              <div class="kpi-card" onclick="navTo('promptLib')"><div class="kpi-value" id="kpi-avg-quality">—</div><div class="kpi-label">Avg Quality Score</div></div>
+              <div class="kpi-card green" onclick="navTo('promptLib')"><div class="kpi-value" id="kpi-total-prompts">—</div><div class="kpi-label">Prompt Library Size</div></div>
+            </div>
           </div>
         </div>
       </div>
@@ -221,7 +262,7 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
             </div>
             <div class="form-row">
               <label class="form-label">Contract Accounts (one per line, leave blank for demo)</label>
-              <textarea id="job-accounts" class="form-control" rows="5" placeholder="CA000001&#10;CA000002&#10;CA000003"></textarea>
+              <textarea id="job-accounts" class="form-control" rows="5" placeholder="CA0100001&#10;CA0100002&#10;CA0100003"></textarea>
             </div>
             <div class="form-row">
               <label class="form-label">Simulation Mode</label>
@@ -300,29 +341,25 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
           <div class="panel-header">DUCI MAE Platform — Monthly Report</div>
           <div class="panel-body">
             <div class="kpi-grid" style="margin-bottom:20px">
-              <div class="kpi-card green"><div class="kpi-value">87,420</div><div class="kpi-label">Records Modernized</div></div>
-              <div class="kpi-card green"><div class="kpi-value">94.2%</div><div class="kpi-label">Overall Success Rate</div></div>
-              <div class="kpi-card"><div class="kpi-value">12</div><div class="kpi-label">Jobs Completed</div></div>
-              <div class="kpi-card"><div class="kpi-value">340 hrs</div><div class="kpi-label">Hours Saved</div></div>
-              <div class="kpi-card green"><div class="kpi-value">$52,400</div><div class="kpi-label">Cost Avoidance</div></div>
-              <div class="kpi-card green"><div class="kpi-value">1,842</div><div class="kpi-label">AI Auto-Recoveries</div></div>
+              <div class="kpi-card green"><div class="kpi-value" id="exec-records">—</div><div class="kpi-label">Records Modernized</div></div>
+              <div class="kpi-card green"><div class="kpi-value" id="exec-rate">—</div><div class="kpi-label">Overall Success Rate</div></div>
+              <div class="kpi-card"><div class="kpi-value" id="exec-jobs">—</div><div class="kpi-label">Jobs Completed</div></div>
+              <div class="kpi-card"><div class="kpi-value" id="exec-hours">—</div><div class="kpi-label">Hours Saved</div></div>
+              <div class="kpi-card green"><div class="kpi-value" id="exec-cost">—</div><div class="kpi-label">Cost Avoidance</div></div>
+              <div class="kpi-card green"><div class="kpi-value" id="exec-ai">—</div><div class="kpi-label">AI Auto-Recoveries</div></div>
             </div>
-            <div style="background:#f8f9fa;border-radius:8px;padding:20px;font-size:14px;line-height:1.8;color:#32363a">
-              <strong>Executive Narrative:</strong><br/>
-              In the current period, Demo Utilities Company Inc. successfully processed <strong>12 bulk data modernization campaigns</strong> covering Allentown, Bethlehem, and Easton service territories. The Mailing Address Update campaign achieved a <strong>94.2% first-pass success rate</strong> with 1,842 records automatically recovered by the AI retry framework. Estimated operational cost avoidance: <strong>$52,400</strong> vs. manual processing baseline. The platform is on track to complete the full 100,000-record modernization by end of Q4.
+            <div id="exec-narrative" style="background:#f8f9fa;border-radius:8px;padding:20px;font-size:14px;line-height:1.8;color:#32363a">
+              <strong>Executive Narrative:</strong><br/>Loading summary data...
             </div>
           </div>
         </div>
         <div class="panel">
-          <div class="panel-header">Jobs by Type</div>
+          <div class="panel-header">Jobs by Type (Last 90 Days)</div>
           <div class="panel-body" style="padding:0">
             <table>
               <thead><tr><th>Job Type</th><th>Jobs</th><th>Records</th><th>Success Rate</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td>Mailing Address Update</td><td>5</td><td>42,100</td><td><span class="badge badge-success">96.1%</span></td><td><span class="badge badge-success">On Track</span></td></tr>
-                <tr><td>Contract Account Update</td><td>3</td><td>18,500</td><td><span class="badge badge-success">94.8%</span></td><td><span class="badge badge-success">On Track</span></td></tr>
-                <tr><td>Customer Preference Update</td><td>3</td><td>21,320</td><td><span class="badge badge-warning">91.2%</span></td><td><span class="badge badge-warning">Monitor</span></td></tr>
-                <tr><td>Notification Request</td><td>1</td><td>5,500</td><td><span class="badge badge-success">100%</span></td><td><span class="badge badge-success">Completed</span></td></tr>
+              <tbody id="exec-type-body">
+                <tr><td colspan="5" style="text-align:center;color:#6a7988;padding:16px">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -332,19 +369,33 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
       <!-- PLATFORM INSIGHTS -->
       <div id="page-insights" class="page">
         <div class="page-title">⚡ Platform Insights</div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-value" id="ins-jobs">—</div><div class="kpi-label">Jobs (30 days)</div></div>
+          <div class="kpi-card green"><div class="kpi-value" id="ins-rate">—</div><div class="kpi-label">Success Rate</div></div>
+          <div class="kpi-card"><div class="kpi-value" id="ins-records">—</div><div class="kpi-label">Records Processed</div></div>
+          <div class="kpi-card orange"><div class="kpi-value" id="ins-failures">—</div><div class="kpi-label">Failed Records</div></div>
+          <div class="kpi-card"><div class="kpi-value" id="ins-throughput">—</div><div class="kpi-label">Avg Throughput (rec/s)</div></div>
+          <div class="kpi-card green"><div class="kpi-value" id="ins-hours">—</div><div class="kpi-label">Hours Saved</div></div>
+        </div>
         <div class="panel">
-          <div class="panel-header">Throughput Benchmarks</div>
+          <div class="panel-header">
+            Job Volume by Type (Last 90 Days)
+            <span style="flex:1"></span>
+            <button class="btn btn-secondary btn-sm" onclick="loadInsights()">🔄 Refresh</button>
+          </div>
           <div class="panel-body" style="padding:0">
             <table>
-              <thead><tr><th>Batch Size</th><th>Mode</th><th>Duration</th><th>Throughput</th><th>Result</th></tr></thead>
-              <tbody>
-                <tr><td>10,000</td><td>Simulation</td><td>8s</td><td>1,250 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
-                <tr><td>50,000</td><td>Simulation</td><td>42s</td><td>1,190 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
-                <tr><td>100,000</td><td>Simulation</td><td>89s</td><td>1,123 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
-                <tr><td>10,000</td><td>Real</td><td>11s</td><td>909 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
-                <tr><td>50,000</td><td>Real</td><td>58s</td><td>862 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
-                <tr><td>100,000</td><td>Real</td><td>2m 3s</td><td>812 rec/s</td><td><span class="badge badge-success">✅ Target Met</span></td></tr>
-              </tbody>
+              <thead><tr><th>Job Type</th><th>Jobs</th><th>Records</th><th>Successes</th><th>Failures</th><th>Success Rate</th></tr></thead>
+              <tbody id="ins-type-body"><tr><td colspan="6" style="text-align:center;color:#6a7988;padding:20px">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">Daily Volume (Last 7 Days)</div>
+          <div class="panel-body" style="padding:0">
+            <table>
+              <thead><tr><th>Date</th><th>Jobs Run</th><th>Records Processed</th></tr></thead>
+              <tbody id="ins-daily-body"><tr><td colspan="3" style="text-align:center;color:#6a7988;padding:20px">Loading...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -381,6 +432,61 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
         </div>
       </div>
 
+      <!-- PROMPT LIBRARY -->
+      <div id="page-promptLib" class="page">
+        <div class="page-title">🧠 AI Prompt Library</div>
+
+        <div class="panel">
+          <div class="panel-header">Browse &amp; Execute AI Prompts</div>
+          <div class="panel-body">
+            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+              <input id="prompt-search" class="form-control" placeholder="Search prompts by title, category, or tag..." style="flex:1;min-width:200px" oninput="filterPrompts()"/>
+              <button class="btn btn-secondary" onclick="loadPrompts()">🔄 Refresh</button>
+            </div>
+            <div id="prompt-category-pills" class="category-pills"></div>
+            <div class="prompt-tabs">
+              <div class="prompt-tab active" id="tab-browse" onclick="switchPromptTab('browse')">Browse All</div>
+              <div class="prompt-tab" id="tab-favorites" onclick="switchPromptTab('favorites')">⭐ Favorites</div>
+              <div class="prompt-tab" id="tab-recommended" onclick="switchPromptTab('recommended')">✅ Recommended</div>
+              <div class="prompt-tab" id="tab-analytics" onclick="switchPromptTab('analytics')">📊 Analytics</div>
+            </div>
+            <div id="prompt-tab-browse">
+              <div id="prompt-grid" class="prompt-grid">
+                <div style="grid-column:1/-1;text-align:center;color:#6a7988;padding:40px">Loading prompts...</div>
+              </div>
+            </div>
+            <div id="prompt-tab-favorites" style="display:none">
+              <div id="prompt-grid-favorites" class="prompt-grid">
+                <div style="grid-column:1/-1;text-align:center;color:#6a7988;padding:40px">No favorites yet — click ⭐ on any prompt card</div>
+              </div>
+            </div>
+            <div id="prompt-tab-recommended" style="display:none">
+              <div id="prompt-grid-recommended" class="prompt-grid">
+                <div style="grid-column:1/-1;text-align:center;color:#6a7988;padding:40px">Loading recommended prompts...</div>
+              </div>
+            </div>
+            <div id="prompt-tab-analytics" style="display:none">
+              <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:16px">
+                <div class="kpi-card"><div class="kpi-value" id="plib-total">—</div><div class="kpi-label">Total Prompts</div></div>
+                <div class="kpi-card"><div class="kpi-value" id="plib-executions">—</div><div class="kpi-label">Total Executions</div></div>
+                <div class="kpi-card green"><div class="kpi-value" id="plib-success-rate">—</div><div class="kpi-label">Success Rate</div></div>
+                <div class="kpi-card green"><div class="kpi-value" id="plib-quality">—</div><div class="kpi-label">Avg Quality</div></div>
+                <div class="kpi-card"><div class="kpi-value" id="plib-alignment">—</div><div class="kpi-label">Avg Alignment</div></div>
+              </div>
+              <div class="panel">
+                <div class="panel-header">Top Prompts by Usage</div>
+                <div class="panel-body" style="padding:0">
+                  <table>
+                    <thead><tr><th>Title</th><th>Category</th><th>Executions</th><th>Avg Quality</th></tr></thead>
+                    <tbody id="plib-top-prompts-body"><tr><td colspan="4" style="text-align:center;color:#6a7988;padding:16px">Loading...</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /shell -->
@@ -399,7 +505,7 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
 
 <script>
 // ── Navigation ────────────────────────────────────────────────────────────────
-var NAV_PAGES = ['dashboard','copilot','createJob','jobMonitor','failureAnalysis','executive','insights','customers'];
+var NAV_PAGES = ['dashboard','copilot','createJob','jobMonitor','failureAnalysis','executive','insights','customers','promptLib'];
 
 function showPage(id, navEl) {
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
@@ -412,14 +518,23 @@ function showPage(id, navEl) {
 }
 
 // Reliable single-entry nav — use this everywhere instead of querySelectorAll
-function navTo(id) {
-  var idx = NAV_PAGES.indexOf(id);
-  var navItems = document.querySelectorAll('.nav-item');
-  var navEl = idx >= 0 && navItems[idx] ? navItems[idx] : null;
-  showPage(id, navEl);
+function navTo(page) {
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  var pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.add('active');
+  var navEl = document.getElementById('nav-' + page);
+  if (navEl) navEl.classList.add('active');
+  // scroll content area back to top on page change
+  document.getElementById('content').scrollTop = 0;
   // auto-load data for pages that need it
-  if (id === 'jobMonitor') loadJobs();
-  if (id === 'failureAnalysis') loadFailures();
+  if (page === 'dashboard') { loadKPIs(); loadJobs(); }
+  if (page === 'jobMonitor') { loadJobs(); }
+  if (page === 'failureAnalysis') { loadFailures(); }
+  if (page === 'executive') { loadExecutiveSummary(); }
+  if (page === 'promptLib') { loadPrompts(); }
+  if (page === 'customers') { searchCustomers('all'); }
+  if (page === 'insights') { loadInsights(); }
 }
 
 function toggleSidebar() {
@@ -476,6 +591,152 @@ function renderDashboardJobs(jobs) {
   }).join('');
 }
 
+// ── Executive Summary Loader ──────────────────────────────────────────────────
+function loadExecutiveSummary() {
+  var now = new Date();
+  var from = new Date(now.getTime() - 31*24*60*60*1000).toISOString().substring(0,10);
+  var to = new Date(now.getTime() + 24*60*60*1000).toISOString().substring(0,10);
+  fetch('/api/summary?fromDate='+from+'&toDate='+to)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var s = d.summary || {};
+      var rate = (s.overallSuccessRate||0).toFixed(1)+'%';
+      var set = function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+      set('exec-records',(s.totalSuccess||0).toLocaleString());
+      set('exec-rate', rate);
+      set('exec-jobs', s.completedJobs||0);
+      set('exec-hours', (s.estimatedHoursSaved||0).toFixed(0)+' hrs');
+      set('exec-cost', '$'+(s.costAvoidance||0).toLocaleString());
+      set('exec-ai', (s.aiRecoveries||0).toLocaleString());
+      var narr = document.getElementById('exec-narrative');
+      if (narr) narr.innerHTML = '<strong>Executive Narrative:</strong><br/>In the current period, DUCI processed <strong>'+(s.totalAccounts||0).toLocaleString()+'</strong> customer account records across <strong>'+(s.totalJobs||0)+'</strong> bulk jobs. Overall success rate: <strong>'+rate+'</strong>. '+(s.completedJobs||0)+' jobs completed successfully, '+(s.failedJobs||0)+' failed. Estimated <strong>'+(s.estimatedHoursSaved||0).toFixed(0)+' hours</strong> saved versus manual processing. AI auto-recovered <strong>'+(s.aiRecoveries||0)+'</strong> records via retry. Estimated cost avoidance: <strong>$'+(s.costAvoidance||0).toLocaleString()+'</strong>.';
+    })
+    .catch(function(){
+      var narr = document.getElementById('exec-narrative');
+      if (narr) narr.innerHTML = '<strong>Executive Narrative:</strong><br/>Unable to load summary data — backend not reachable. Showing cached values.';
+    });
+
+  // Load jobs-by-type breakdown from insights API
+  fetch('/api/insights')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var tbody = document.getElementById('exec-type-body');
+      if (!tbody) return;
+      var rows = d.jobTypeBreakdown || [];
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#6a7988;padding:16px">No job data available</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function(t){
+        var rate = t.successRate;
+        var cls = rate >= 95 ? 'badge-success' : rate >= 85 ? 'badge-warning' : 'badge-error';
+        var status = rate >= 95 ? 'On Track' : rate >= 85 ? 'Monitor' : 'Attention Needed';
+        return '<tr><td>'+t.jobType.replace(/_/g,' ')+'</td>'+
+          '<td>'+t.count+'</td>'+
+          '<td>'+t.records.toLocaleString()+'</td>'+
+          '<td><span class="badge '+cls+'">'+rate+'%</span></td>'+
+          '<td><span class="badge '+cls+'">'+status+'</span></td></tr>';
+      }).join('');
+    }).catch(function(){
+      var tbody = document.getElementById('exec-type-body');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#6a7988;padding:16px">Job type data unavailable</td></tr>';
+    });
+}
+
+// ── Platform Insights Loader ──────────────────────────────────────────────────
+function loadInsights() {
+  fetch('/api/insights')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var s = d.summary || {};
+      var set = function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+      set('ins-jobs', s.totalJobs||0);
+      set('ins-rate', (s.successRate||0).toFixed(1)+'%');
+      var recs = s.totalRecords >= 1000 ? (s.totalRecords/1000).toFixed(1)+'K' : (s.totalRecords||0);
+      set('ins-records', recs);
+      set('ins-failures', (s.failureRecords||0).toLocaleString());
+      set('ins-throughput', s.avgThroughputRps > 0 ? s.avgThroughputRps+' rec/s' : 'N/A');
+      set('ins-hours', (s.estimatedHoursSaved||0).toFixed(0)+' hrs');
+
+      var typeBody = document.getElementById('ins-type-body');
+      if (typeBody) {
+        var rows = d.jobTypeBreakdown || [];
+        if (!rows.length) {
+          typeBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6a7988;padding:20px">No job data — create jobs to see breakdown</td></tr>';
+        } else {
+          typeBody.innerHTML = rows.map(function(t){
+            var cls = t.successRate >= 95 ? 'badge-success' : t.successRate >= 85 ? 'badge-warning' : 'badge-error';
+            return '<tr>'+
+              '<td>'+t.jobType.replace(/_/g,' ')+'</td>'+
+              '<td>'+t.count+'</td>'+
+              '<td>'+t.records.toLocaleString()+'</td>'+
+              '<td style="color:#107e3e">'+t.success.toLocaleString()+'</td>'+
+              '<td style="color:#bb0000">'+t.failed.toLocaleString()+'</td>'+
+              '<td><span class="badge '+cls+'">'+t.successRate+'%</span></td></tr>';
+          }).join('');
+        }
+      }
+
+      var dailyBody = document.getElementById('ins-daily-body');
+      if (dailyBody) {
+        var daily = d.dailyVolumes || [];
+        if (!daily.length) {
+          dailyBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#6a7988;padding:20px">No data</td></tr>';
+        } else {
+          dailyBody.innerHTML = daily.map(function(day){
+            return '<tr><td>'+day.date+'</td><td>'+day.jobs+'</td><td>'+day.records.toLocaleString()+'</td></tr>';
+          }).join('');
+        }
+      }
+    }).catch(function(){
+      var set = function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+      set('ins-jobs','—');set('ins-rate','—');set('ins-records','—');set('ins-failures','—');set('ins-throughput','—');set('ins-hours','—');
+      toast('Platform Insights: backend not reachable');
+    });
+}
+
+// ── KPI Loader ────────────────────────────────────────────────────────────────
+function loadKPIs() {
+  var now = new Date();
+  var from = new Date(now.getTime() - 31*24*60*60*1000).toISOString().substring(0,10);
+  var to = new Date(now.getTime() + 24*60*60*1000).toISOString().substring(0,10);
+  fetch('/api/summary?fromDate='+from+'&toDate='+to)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var s = d.summary || {};
+      var totalSuccess = s.totalSuccess || 0;
+      var records = totalSuccess >= 1000 ? Math.round(totalSuccess/1000)+'K' : totalSuccess;
+      var rate = (s.overallSuccessRate||0).toFixed(1)+'%';
+      var jobs = s.completedJobs || 0;
+      var hours = (s.estimatedHoursSaved||0).toFixed(0)+'h';
+      var ai = (s.aiRecoveries||0).toLocaleString();
+      var cost = s.costAvoidance >= 1000 ? '$'+Math.round(s.costAvoidance/1000)+'K' : '$'+(s.costAvoidance||0);
+      var el; function set(id,v){el=document.getElementById(id);if(el)el.textContent=v;}
+      set('kpi-records',records); set('kpi-rate',rate); set('kpi-jobs',jobs);
+      set('kpi-hours',hours); set('kpi-ai',ai); set('kpi-cost',cost);
+      set('exec-records',(totalSuccess||0).toLocaleString()); set('exec-rate',rate);
+      set('exec-jobs',jobs); set('exec-hours',(s.estimatedHoursSaved||0).toFixed(0)+' hrs');
+      set('exec-cost','$'+(s.costAvoidance||0).toLocaleString()); set('exec-ai',(s.aiRecoveries||0).toLocaleString());
+      var narr = document.getElementById('exec-narrative');
+      if (narr) narr.innerHTML = '<strong>Executive Narrative:</strong><br/>In the current period, DUCI processed <strong>'+(s.totalAccounts||0).toLocaleString()+'</strong> customer account records across <strong>'+(s.totalJobs||0)+'</strong> bulk jobs. Overall success rate: <strong>'+rate+'</strong>. '+jobs+' jobs completed successfully, '+(s.failedJobs||0)+' failed. Estimated <strong>'+(s.estimatedHoursSaved||0).toFixed(0)+' hours</strong> saved versus manual processing. AI auto-recovered <strong>'+(s.aiRecoveries||0)+'</strong> records via retry. Estimated cost avoidance: <strong>$'+(s.costAvoidance||0).toLocaleString()+'</strong>.';
+    })
+    .catch(function(){
+      var set = function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+      set('kpi-records','—');set('kpi-rate','—');set('kpi-jobs','—');set('kpi-hours','—');set('kpi-ai','—');set('kpi-cost','—');
+    });
+  // Also load prompt analytics for AI KPI row
+  fetch('/api/prompts/analytics/summary')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var s = d.summary || d; // API wraps in summary object
+      var set=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+      set('kpi-prompt-executions',(s.totalExecutions||0).toLocaleString());
+      set('kpi-prompt-rate',(s.testPassRate||0).toFixed(1)+'%');
+      set('kpi-avg-quality',(s.avgQualityScore||s.avgQuality||0).toFixed(0));
+      set('kpi-total-prompts',(s.totalPrompts||0));
+    }).catch(function(){});
+}
+
 // ── Job Monitor ───────────────────────────────────────────────────────────────
 function loadJobs() {
   fetch('/odata/v4/BulkJobService/BatchJobs?$orderby=CREATED_ON%20desc&$top=20')
@@ -511,7 +772,7 @@ function renderJobs(jobs) {
       '<td style="font-size:11px;color:#6a7988">'+stepLabel(j.CURRENT_STEP)+'</td>'+
       '<td><div class="progress" style="width:70px;display:inline-block;vertical-align:middle"><div class="progress-bar" style="width:'+pct+'%"></div></div><span style="font-size:11px;color:#6a7988;margin-left:4px">'+pct+'%</span></td>'+
       '<td style="font-size:12px">'+(j.SUCCESS_COUNT||0)+' ✅ / '+(j.FAILED_COUNT||0)+' ❌</td>'+
-      '<td style="text-align:center;font-size:12px">'+(j.RETRY_COUNT||0)+' / 3</td>'+
+      '<td style="text-align:center;font-size:12px">'+((j.RETRY_COUNT||j.retryCount)||0)+' / 3</td>'+
       '<td style="font-size:11px;color:#6a7988">'+timeAgo(j.CREATED_ON)+'</td>'+
       '<td>'+
         (canViewResult ? '<button class="btn btn-secondary btn-sm" onclick="viewResult(\''+j.BATCH_ID+'\')">📄 Results</button> ' : '')+
@@ -571,6 +832,7 @@ function viewResult(batchId) {
         failuresWrap.style.display = 'none';
         noFailures.style.display = 'block';
       }
+      loadKPIs();
     })
     .catch(function(){
       // Demo fallback
@@ -597,11 +859,15 @@ function renderFailures(failures) {
   var tbody = document.getElementById('failures-body');
   if (!failures.length) { tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#6a7988;padding:20px">No failures found ✅</td></tr>'; return; }
   tbody.innerHTML = failures.map(function(f){
+    var jobType = f.JOB_TYPE || f.jobType || 'MAILING_ADDRESS_UPDATE';
     return '<tr>'+
-      '<td style="font-family:monospace">'+f.CONTRACT_ACCOUNT+'</td>'+
-      '<td>'+f.ERROR_MESSAGE+'</td>'+
-      '<td style="text-align:center">'+f.RETRY_ATTEMPT+' / 3</td>'+
-      '<td><button class="btn btn-secondary btn-sm" onclick="editFailedRecord(\''+f.CONTRACT_ACCOUNT+'\',\''+f.ERROR_MESSAGE.replace(/'/g,'')+'\',\''+(f.BATCH_ID||'')+'\')" >✏️ Edit &amp; Reprocess</button></td></tr>';
+      '<td style="font-family:monospace">'+(f.CONTRACT_ACCOUNT||f.contractAccount)+'</td>'+
+      '<td>'+(f.ERROR_MESSAGE||f.errorMessage)+'</td>'+
+      '<td style="text-align:center">'+((f.RETRY_ATTEMPT||f.retryAttempt)||0)+' / 3</td>'+
+      '<td><button class="btn btn-secondary btn-sm" onclick="editFailedRecord(\''+
+        (f.CONTRACT_ACCOUNT||f.contractAccount)+'\',\''+
+        (f.ERROR_MESSAGE||f.errorMessage||'').replace(/'/g,'')+'\',\''+
+        (f.BATCH_ID||f.batchId||'')+'\',\''+jobType+'\')" >✏️ Edit &amp; Reprocess</button></td></tr>';
   }).join('');
 }
 
@@ -618,7 +884,7 @@ function submitJob() {
   var sim = document.getElementById('job-sim').checked;
   var raw = document.getElementById('job-accounts').value;
   var accounts = raw.split('\n').map(function(s){return s.trim();}).filter(Boolean);
-  if (!accounts.length) accounts = ['CA000001','CA000002','CA000003'];
+  if (!accounts.length) accounts = ['CA0100001','CA0100002','CA0100003'];
 
   var confirmed = confirm(
     (sim ? '🔍 SIMULATION' : '⚠️ REAL EXECUTION') + '\n\n' +
@@ -637,13 +903,13 @@ function submitJob() {
   .then(function(data){
     toast('✅ Job submitted! Batch ID: '+(data.batchId||data.id||'N/A'));
     navTo('jobMonitor');
-    setTimeout(loadJobs, 500);
+    setTimeout(function(){ loadJobs(); loadKPIs(); }, 500);
   }).catch(function(){
     var fakeId = 'DEMO-'+Date.now().toString(36).toUpperCase();
     toast('✅ Demo mode: Job submitted as '+fakeId);
     DEMO_JOBS.unshift({BATCH_ID:fakeId+'-0000-0000-0000-'+fakeId, JOB_TYPE:jobType, STATUS:'IN_PROGRESS', TOTAL_ACCOUNTS:accounts.length, SUCCESS_COUNT:0, FAILED_COUNT:0, CREATED_ON:new Date().toISOString()});
     navTo('jobMonitor');
-    setTimeout(function(){renderJobs(DEMO_JOBS);}, 200);
+    setTimeout(function(){ renderJobs(DEMO_JOBS); loadKPIs(); }, 200);
   });
 }
 
@@ -741,11 +1007,13 @@ function executeCancelJob(batchId) {
 }
 
 // ── Edit + Reprocess Failed Record ────────────────────────────────────────────
-function editFailedRecord(contractAccount, errorMessage, batchId) {
+function editFailedRecord(contractAccount, errorMessage, batchId, jobType) {
+  jobType = jobType || 'MAILING_ADDRESS_UPDATE';
   var body =
     '<div style="margin-bottom:14px;background:#fdecea;border-radius:6px;padding:10px;font-size:13px">'+
     '<strong>Contract Account:</strong> '+contractAccount+'<br>'+
-    '<strong>Original Error:</strong> '+errorMessage+'</div>'+
+    '<strong>Original Error:</strong> '+errorMessage+'<br>'+
+    '<strong>Job Type:</strong> <span class="badge badge-info">'+jobType.replace(/_/g,' ')+'</span></div>'+
     '<div class="form-row"><label class="form-label">Fix: Updated Street Address</label>'+
     '<input id="fix-street" class="form-control" placeholder="e.g. 555 Market St"/></div>'+
     '<div class="form-row"><label class="form-label">City</label>'+
@@ -760,17 +1028,18 @@ function editFailedRecord(contractAccount, errorMessage, batchId) {
 
   openModal('Edit &amp; Reprocess: '+contractAccount, body, [
     {label:'Cancel', action:'closeModal()'},
-    {label:'💾 Save Only', action:'saveFailureResolution("'+contractAccount+'","'+batchId+'",false)'},
-    {label:'↩ Save &amp; Reprocess', primary:true, action:'saveFailureResolution("'+contractAccount+'","'+batchId+'",true)'}
+    {label:'💾 Save Only', action:'saveFailureResolution("'+contractAccount+'","'+batchId+'",false,"'+jobType+'")'},
+    {label:'↩ Save &amp; Reprocess', primary:true, action:'saveFailureResolution("'+contractAccount+'","'+batchId+'",true,"'+jobType+'")'}
   ]);
 }
 
-function saveFailureResolution(contractAccount, batchId, andReprocess) {
+function saveFailureResolution(contractAccount, batchId, andReprocess, jobType) {
   var street = modalVal('fix-street');
   var city   = modalVal('fix-city');
   var state  = modalVal('fix-state');
   var zip    = modalVal('fix-zip');
   var note   = modalVal('fix-note');
+  jobType = jobType || 'MAILING_ADDRESS_UPDATE';
 
   if (!street && !city && !zip) {
     toast('⚠️ Please fill in at least one corrected field'); return;
@@ -793,7 +1062,7 @@ function saveFailureResolution(contractAccount, batchId, andReprocess) {
       {label:'Back', action:'closeModal()'},
       {label: andReprocess?'✅ Confirm &amp; Reprocess':'✅ Confirm Save', primary:true,
         action:'executeFailureResolution("'+contractAccount+'","'+batchId+'",'+andReprocess+',"'+
-          encodeURIComponent(JSON.stringify({street:street,city:city,state:state,zip:zip,note:note}))+'")'
+          encodeURIComponent(JSON.stringify({street:street,city:city,state:state,zip:zip,note:note,jobType:jobType}))+'")'
       }
     ]
   );
@@ -802,6 +1071,7 @@ function saveFailureResolution(contractAccount, batchId, andReprocess) {
 function executeFailureResolution(contractAccount, batchId, andReprocess, encodedData) {
   closeModal();
   var data = JSON.parse(decodeURIComponent(encodedData));
+  var jobType = data.jobType || 'MAILING_ADDRESS_UPDATE';
 
   // Mark resolved in failure logs
   fetch('/odata/v4/AdminService/BatchJobFailureLogs', {
@@ -810,9 +1080,9 @@ function executeFailureResolution(contractAccount, batchId, andReprocess, encode
   }).catch(function(){}); // best effort
 
   if (andReprocess) {
-    // Submit a reprocess job for just this record
+    // Submit a reprocess job for just this record using the original job type
     var payload = {
-      jobType: 'MAILING_ADDRESS_UPDATE',
+      jobType: jobType,
       parameters: {
         contractAccounts: [contractAccount],
         newAddress: {street:data.street, city:data.city, state:data.state, zip:data.zip}
@@ -820,7 +1090,7 @@ function executeFailureResolution(contractAccount, batchId, andReprocess, encode
       simulationMode: false,
       description: 'Reprocess of '+contractAccount+' — '+( data.note||'manual fix')
     };
-    fetch('/api/bulk-jobs/MAILING_ADDRESS_UPDATE', {
+    fetch('/api/bulk-jobs/'+jobType, {
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
     }).then(function(r){return r.json();})
     .then(function(d){ toast('✅ Reprocess job queued: '+(d.batchId||'submitted')); navTo('jobMonitor'); })
@@ -847,23 +1117,25 @@ function searchCustomers(mode) {
   var resultsEl = document.getElementById('cust-results');
   resultsEl.innerHTML = '<div style="color:#6a7988;font-size:13px;padding:12px">Searching...</div>';
 
-  fetch('/api/customers/batch', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({contractAccounts: query ? [query] : [], city: query||undefined})
-  }).then(function(r){return r.json();})
-  .then(function(d){ renderCustomers(d.records||d.value||[], resultsEl); })
-  .catch(function(){
-    // Demo fallback — filter local data
-    var lower = query.toLowerCase();
-    var filtered = mode==='all' ? DEMO_CUSTOMERS : DEMO_CUSTOMERS.filter(function(c){
-      return !query ||
-        c.CONTRACT_ACCOUNT.toLowerCase().includes(lower) ||
-        c.CITY.toLowerCase().includes(lower) ||
-        c.FULL_NAME.toLowerCase().includes(lower);
+  // Build URL — use /api/customers/search which supports both contract account and city
+  var url = '/api/customers/search?top=50';
+  if (query) url += '&query=' + encodeURIComponent(query);
+
+  fetch(url)
+    .then(function(r){return r.json();})
+    .then(function(d){ renderCustomers(d.records||d.value||[], resultsEl); })
+    .catch(function(){
+      // Demo fallback — filter local data
+      var lower = query.toLowerCase();
+      var filtered = DEMO_CUSTOMERS.filter(function(c){
+        return !lower ||
+          c.CONTRACT_ACCOUNT.toLowerCase().includes(lower) ||
+          c.CITY.toLowerCase().includes(lower) ||
+          c.FULL_NAME.toLowerCase().includes(lower);
+      });
+      renderCustomers(filtered, resultsEl);
+      if (mode !== 'all') toast('Showing demo data — backend not reachable');
     });
-    renderCustomers(filtered, resultsEl);
-    if (mode !== 'all') toast('Showing demo data — backend not reachable');
-  });
 }
 
 function renderCustomers(records, container) {
@@ -952,7 +1224,7 @@ function executeCustomerUpdate(contractAccount, encodedAddr, asJob) {
       jobType: 'MAILING_ADDRESS_UPDATE',
       parameters: {
         contractAccounts: [contractAccount],
-        newAddress: {street:addr.street, city:addr.city, state:addr.state, zip:addr.zip}
+        newAddress: {streetAddress:addr.street, city:addr.city, stateCode:addr.state, zipCode:addr.zip}
       },
       simulationMode: false,
       description: 'Address update for '+contractAccount+' via Customer Records screen'
@@ -963,13 +1235,13 @@ function executeCustomerUpdate(contractAccount, encodedAddr, asJob) {
     .then(function(d){ toast('📋 Job queued: '+(d.batchId||'submitted')); navTo('jobMonitor'); })
     .catch(function(){ toast('📋 Demo: job queued for '+contractAccount); navTo('jobMonitor'); });
   } else {
-    // Direct PATCH to CAP OData
-    fetch('/odata/v4/BulkJobService/ContractAccounts("'+contractAccount+'")', {
+    // Direct Update via REST — bypasses job pipeline for single-account updates
+    fetch('/api/contracts/'+encodeURIComponent(contractAccount)+'/address', {
       method:'PATCH', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({STREET_ADDRESS:addr.street, CITY:addr.city, STATE_CODE:addr.state, ZIP_CODE:addr.zip})
-    }).then(function(){ toast('✅ Address saved for '+contractAccount); searchCustomers(); })
+      body: JSON.stringify({streetAddress:addr.street, city:addr.city, stateCode:addr.state, zipCode:addr.zip})
+    }).then(function(r){return r.json();})
+    .then(function(){ toast('✅ Address saved for '+contractAccount); searchCustomers(); })
     .catch(function(){
-      // Demo: update local cache
       DEMO_CUSTOMERS.forEach(function(c){
         if(c.CONTRACT_ACCOUNT===contractAccount){
           c.STREET_ADDRESS=addr.street; c.CITY=addr.city; c.STATE_CODE=addr.state; c.ZIP_CODE=addr.zip;
@@ -981,9 +1253,239 @@ function executeCustomerUpdate(contractAccount, encodedAddr, asJob) {
   }
 }
 
+// ── Prompt Library ────────────────────────────────────────────────────────────
+var PROMPT_DATA = [];
+var PROMPT_ACTIVE_CAT = 'all';
+
+function loadPrompts() {
+  fetch('/api/prompts?limit=200')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      PROMPT_DATA = d.prompts || [];
+      renderCategoryPills(d.categories || []);
+      filterPrompts();
+    })
+    .catch(function(){ toast('Prompt Library: backend not reachable'); });
+}
+
+function renderCategoryPills(cats) {
+  var el = document.getElementById('prompt-category-pills');
+  if (!el) return;
+  var pills = '<div class="category-pill '+(PROMPT_ACTIVE_CAT==='all'?'active':'')+'" onclick="setCat(\'all\')">All</div>';
+  cats.forEach(function(c){
+    var safeC = c.replace(/'/g,'').replace(/"/g,'');
+    pills += '<div class="category-pill '+(PROMPT_ACTIVE_CAT===c?'active':'')+'" onclick="setCat(\''+safeC+'\')">'+c+'</div>';
+  });
+  el.innerHTML = pills;
+}
+
+function setCat(cat) {
+  PROMPT_ACTIVE_CAT = cat;
+  document.querySelectorAll('.category-pill').forEach(function(p){
+    p.classList.remove('active');
+    if ((cat==='all' && p.textContent==='All') || p.textContent===cat) p.classList.add('active');
+  });
+  filterPrompts();
+}
+
+function filterPrompts() {
+  var q = (document.getElementById('prompt-search')||{}).value || '';
+  q = q.toLowerCase();
+  var filtered = PROMPT_DATA.filter(function(p){
+    var cat = p.CATEGORY || p.category || '';
+    if (PROMPT_ACTIVE_CAT !== 'all' && cat !== PROMPT_ACTIVE_CAT) return false;
+    if (!q) return true;
+    var title = (p.TITLE || p.title || '').toLowerCase();
+    var tags  = (p.TAGS  || p.tags  || '').toLowerCase();
+    var desc  = (p.DESCRIPTION || p.description || '').toLowerCase();
+    return title.includes(q) || tags.includes(q) || desc.includes(q);
+  });
+  renderPromptCards(filtered, 'prompt-grid');
+}
+
+function switchPromptTab(tab) {
+  ['browse','favorites','recommended','analytics'].forEach(function(t){
+    var el = document.getElementById('prompt-tab-'+t);
+    var btn = document.getElementById('tab-'+t);
+    if (el) el.style.display = (t===tab) ? '' : 'none';
+    if (btn) { btn.classList.remove('active'); if(t===tab) btn.classList.add('active'); }
+  });
+  if (tab === 'favorites') {
+    var favs = PROMPT_DATA.filter(function(p){ return p.IS_FAVORITE || p.isFavorite; });
+    renderPromptCards(favs, 'prompt-grid-favorites');
+    if (!favs.length) {
+      var el = document.getElementById('prompt-grid-favorites');
+      if (el) el.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#6a7988;padding:40px">No favorites yet — click ⭐ on any prompt card</div>';
+    }
+  }
+  if (tab === 'recommended') {
+    var recs = PROMPT_DATA.filter(function(p){ return p.IS_RECOMMENDED || p.isRecommended; });
+    renderPromptCards(recs, 'prompt-grid-recommended');
+  }
+  if (tab === 'analytics') loadPromptAnalytics();
+}
+
+function loadPromptAnalytics() {
+  fetch('/api/prompts/analytics/summary')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var s = d.summary || d; // API wraps in summary object
+      var set=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
+      set('plib-total', s.totalPrompts||0);
+      set('plib-executions', (s.totalExecutions||0).toLocaleString());
+      set('plib-success-rate', (s.testPassRate||0).toFixed(1)+'%');
+      set('plib-quality', (s.avgQualityScore||s.avgQuality||0).toFixed(1));
+      set('plib-alignment', (s.avgAlignmentScore||s.avgAlignment||0).toFixed(1));
+      var tbody = document.getElementById('plib-top-prompts-body');
+      if (tbody) {
+        var top = (s.topByUsage || s.topPrompts || []);
+        if (top.length) {
+          tbody.innerHTML = top.map(function(p){
+            return '<tr><td>'+(p.title||p.TITLE||'')+'</td><td><span class="badge badge-info">'+(p.category||p.CATEGORY||'')+'</span></td><td>'+(p.usageCount||p.USAGE_COUNT||0)+'</td><td>'+(p.avgQuality||0).toFixed(1)+'</td></tr>';
+          }).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6a7988;padding:16px">No executions yet — execute prompts to see analytics</td></tr>';
+        }
+      }
+    }).catch(function(){});
+}
+
+function renderPromptCards(prompts, containerId) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  if (!prompts.length) {
+    el.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#6a7988;padding:40px">No prompts found</div>';
+    return;
+  }
+  el.innerHTML = prompts.map(function(p){
+    var id      = (p.PROMPT_ID || p.promptId || '').replace(/'/g,'');
+    var title   = (p.TITLE     || p.title    || 'Untitled').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    var cat     = p.CATEGORY   || p.category || '';
+    var tags    = (p.TAGS      || p.tags     || '').split(',').filter(Boolean);
+    var persona = p.PERSONA    || p.persona  || '';
+    var text    = (p.PROMPT_TEXT || p.promptText || p.DESCRIPTION || p.description || '');
+    var isFav   = !!(p.IS_FAVORITE || p.isFavorite);
+    var isRec   = !!(p.IS_RECOMMENDED || p.isRecommended);
+    var usage   = p.USAGE_COUNT || p.usageCount || 0;
+    var quality = p.AVG_QUALITY_SCORE || p.avgQualityScore || 0;
+    var preview = text.length > 180 ? text.substring(0,180)+'...' : text;
+
+    return '<div class="prompt-card">'+
+      '<div class="prompt-card-header">'+
+        '<div style="flex:1">'+
+          '<div class="prompt-card-title">'+title+'</div>'+
+          '<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">'+
+            '<span class="prompt-category-badge">'+cat+'</span>'+
+            (isRec ? '<span class="badge rec-badge" style="font-size:10px">✅ Rec</span>' : '')+
+          '</div>'+
+        '</div>'+
+        '<button class="star-btn'+(isFav?' active':'')+'" onclick="toggleFav(\''+id+'\')" title="Favorite">⭐</button>'+
+      '</div>'+
+      '<div class="prompt-text-preview" style="font-size:12px;color:#6a7988;line-height:1.5">'+preview+'</div>'+
+      (persona ? '<div style="font-size:11px;color:#6a7988">👤 '+persona+'</div>' : '')+
+      '<div class="prompt-tags">'+
+        tags.slice(0,4).map(function(t){return '<span class="prompt-tag">'+t.trim()+'</span>';}).join('')+
+        (usage>0 ? '<span class="prompt-tag">🔥 '+usage+'</span>' : '')+
+        (quality>0 ? '<span class="prompt-tag">⭐ '+quality.toFixed(0)+'%</span>' : '')+
+      '</div>'+
+      '<div class="prompt-actions">'+
+        '<button class="btn btn-primary btn-sm" style="flex:1" onclick="showExecModal(\''+id+'\')">▶ Execute</button>'+
+        '<button class="btn btn-secondary btn-sm" onclick="runPromptTest(\''+id+'\')">🧪 Test</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function toggleFav(promptId) {
+  fetch('/api/prompts/'+encodeURIComponent(promptId)+'/favorite', {method:'POST'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var p = PROMPT_DATA.find(function(x){return (x.PROMPT_ID||x.promptId)===promptId;});
+      if (p) { p.IS_FAVORITE = d.isFavorite; p.isFavorite = d.isFavorite; }
+      filterPrompts();
+      toast(d.isFavorite ? '⭐ Added to favorites' : 'Removed from favorites');
+    }).catch(function(){ toast('Could not update favorite'); });
+}
+
+function showExecModal(promptId) {
+  var p = PROMPT_DATA.find(function(x){return (x.PROMPT_ID||x.promptId)===promptId;}) || {};
+  var title = (p.TITLE || p.title || 'Prompt').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var text  = p.PROMPT_TEXT || p.promptText || '';
+
+  var body =
+    '<div class="form-row"><label class="form-label">Prompt Text (editable)</label>'+
+    '<textarea id="exec-prompt-text" class="form-control" rows="4" style="font-size:12px">'+text.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</textarea></div>'+
+    '<div class="form-row"><label class="form-label">Additional Context (optional)</label>'+
+    '<input id="exec-context" class="form-control" placeholder="Add specific data, constraints, or context..."/></div>'+
+    '<div class="form-row"><label class="form-label">Model</label>'+
+    '<select id="exec-model" class="form-control"><option value="gpt-4o">GPT-4o (SAP AI Core)</option><option value="gpt-4">GPT-4</option><option value="gpt-3.5-turbo">GPT-3.5 Turbo</option></select></div>'+
+    '<div id="exec-result-section" style="display:none;margin-top:12px">'+
+      '<div style="font-weight:600;font-size:13px;margin-bottom:8px">🤖 AI Response</div>'+
+      '<div id="exec-response" class="exec-response">Executing...</div>'+
+      '<div id="exec-scores" class="score-gauges" style="display:none">'+
+        '<div class="score-gauge"><div class="score-gauge-value" id="score-quality">—</div><div class="score-gauge-label">Quality</div></div>'+
+        '<div class="score-gauge"><div class="score-gauge-value" id="score-alignment">—</div><div class="score-gauge-label">Alignment</div></div>'+
+        '<div class="score-gauge"><div class="score-gauge-value" id="score-business">—</div><div class="score-gauge-label">Business</div></div>'+
+        '<div class="score-gauge"><div class="score-gauge-value" id="score-confidence">—</div><div class="score-gauge-label">Confidence</div></div>'+
+        '<div class="score-gauge"><div class="score-gauge-value" id="score-risk">—</div><div class="score-gauge-label">Halluc. Risk</div></div>'+
+      '</div>'+
+    '</div>';
+
+  openModal('▶ Execute: '+title, body, [
+    {label:'Cancel', action:'closeModal()'},
+    {label:'▶ Execute', primary:true, action:'doExecPrompt(\''+promptId+'\')'}
+  ]);
+}
+
+function doExecPrompt(promptId) {
+  var context = modalVal('exec-context');
+  var model   = (document.getElementById('exec-model')||{}).value || 'gpt-4o';
+  var rs = document.getElementById('exec-result-section');
+  if (rs) rs.style.display = '';
+  var resp = document.getElementById('exec-response');
+  if (resp) resp.textContent = 'Executing...';
+
+  fetch('/api/prompts/'+encodeURIComponent(promptId)+'/execute', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({context:context, model:model})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if (resp) resp.innerHTML = (d.response || d.error || 'No response').replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    var sc = d.scores;
+    if (sc) {
+      var scoreEl = document.getElementById('exec-scores');
+      if (scoreEl) scoreEl.style.display = '';
+      var set=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v+'%';};
+      set('score-quality',sc.quality||0); set('score-alignment',sc.alignment||0);
+      set('score-business',sc.businessValue||sc.business||0); set('score-confidence',sc.confidence||0);
+      set('score-risk',sc.hallucinationRisk||0);
+    }
+    var p = PROMPT_DATA.find(function(x){return (x.PROMPT_ID||x.promptId)===promptId;});
+    if (p) p.USAGE_COUNT = (p.USAGE_COUNT||0) + 1;
+    var modeLabel = d.aiCoreUsed ? '' : ' (simulation)';
+    toast('✅ Executed — quality: '+(sc?sc.quality+'%':'N/A')+modeLabel);
+  })
+  .catch(function(err){ if(resp) resp.textContent = 'Error: '+err.message; });
+}
+
+function runPromptTest(promptId) {
+  toast('🧪 Running test suite...');
+  fetch('/api/prompts/'+encodeURIComponent(promptId)+'/test', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var passed = d.passCount || d.passed || 0;
+      var total  = d.testCount || d.testsRun || 0;
+      var rate   = d.passRate  || (total > 0 ? Math.round(passed/total*100) : 0);
+      var overall = d.overallResult || (passed===total?'PASS':'PARTIAL');
+      toast('🧪 Tests: '+passed+'/'+total+' passed ('+rate+'%) — '+overall);
+    }).catch(function(){ toast('🧪 Test error — backend unreachable'); });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
-renderDashboardJobs(DEMO_JOBS);
 loadJobs();
+loadKPIs();
+setInterval(loadKPIs, 30000);
 </script>
 </body>
 </html>

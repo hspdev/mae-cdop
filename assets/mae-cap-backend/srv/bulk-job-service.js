@@ -83,31 +83,39 @@ module.exports = class BulkJobServiceHandler extends cds.ApplicationService {
 
     this.on('getExecutiveSummary', async (req) => {
       const { fromDate, toDate } = req.data;
+      const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+      const from = (fromDate && DATE_RE.test(fromDate)) ? fromDate
+        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+      const to = (toDate && DATE_RE.test(toDate)) ? toDate
+        : new Date().toISOString().substring(0, 10);
       const jobs = await db.run(
         SELECT.from('mae.db.BatchJobs')
-          .where({ CREATED_ON: { between: fromDate, and: toDate } })
+          .where(`CREATED_ON >= '${from}T00:00:00Z' AND CREATED_ON <= '${to}T23:59:59Z'`)
           .orderBy('CREATED_ON desc')
       );
 
       const totals = jobs.reduce((acc, j) => {
         acc.totalJobs++;
-        acc.totalAccounts    += j.TOTAL_ACCOUNTS || 0;
-        acc.totalSuccess     += j.SUCCESS_COUNT  || 0;
-        acc.totalFailed      += j.FAILED_COUNT   || 0;
+        acc.totalAccounts    += j.TOTAL_ACCOUNTS   || 0;
+        acc.totalSuccess     += j.SUCCESS_COUNT    || 0;
+        acc.totalFailed      += j.FAILED_COUNT     || 0;
         acc.totalDuration    += j.DURATION_SECONDS || 0;
+        acc.totalRetries     += j.RETRY_COUNT      || 0;
         if (j.STATUS === 'COMPLETED')           acc.completedJobs++;
         if (j.STATUS === 'PARTIALLY_COMPLETED') acc.partialJobs++;
         if (j.STATUS === 'FAILED')              acc.failedJobs++;
         return acc;
       }, { totalJobs: 0, completedJobs: 0, partialJobs: 0, failedJobs: 0,
-           totalAccounts: 0, totalSuccess: 0, totalFailed: 0, totalDuration: 0 });
+           totalAccounts: 0, totalSuccess: 0, totalFailed: 0, totalDuration: 0, totalRetries: 0 });
 
       totals.overallSuccessRate = totals.totalAccounts > 0
         ? ((totals.totalSuccess / totals.totalAccounts) * 100).toFixed(2) + '%'
         : '0%';
       totals.estimatedHoursSaved = (totals.totalAccounts * 0.002).toFixed(1);  // ~2min per 1000 records vs manual
-      totals.fromDate = fromDate;
-      totals.toDate   = toDate;
+      totals.aiRecoveries  = totals.totalRetries;
+      totals.costAvoidance = Math.round(totals.totalAccounts * 0.52);
+      totals.fromDate = from;
+      totals.toDate   = to;
 
       return JSON.stringify({ summary: totals, jobs });
     });

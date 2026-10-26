@@ -214,3 +214,72 @@ entity CopilotMessages {
       CREATED_ON : Timestamp;
       METADATA   : LargeString;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI PROMPT LIBRARY
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Z_PROMPT_LIBRARY – Production AI prompt catalog */
+entity PromptLibrary {
+  key PROMPT_ID           : UUID;
+      TITLE               : String(200)    not null;
+      DESCRIPTION         : String(1000);
+      CATEGORY            : String(100)    not null;
+      PROMPT_TEXT         : LargeString    not null;
+      SYSTEM_CONTEXT      : LargeString;
+      TAGS                : String(500);
+      PERSONA             : String(100);
+      JOB_TYPE            : String(50);
+      VERSION             : Integer        default 1;
+      STATUS              : String(20)     default 'ACTIVE';
+      OWNER               : String(100);
+      USAGE_COUNT         : Integer        default 0;
+      AVG_QUALITY_SCORE   : Decimal(5,2)   default 0;
+      AVG_ALIGNMENT_SCORE : Decimal(5,2)   default 0;
+      AVG_BUSINESS_SCORE  : Decimal(5,2)   default 0;
+      IS_FAVORITE         : Boolean        default false;
+      IS_RECOMMENDED      : Boolean        default false;
+      CREATED_ON          : Timestamp;
+      UPDATED_ON          : Timestamp;
+}
+
+/** Z_PROMPT_EXECUTIONS – Prompt execution history and scores */
+entity PromptExecutions {
+  key EXECUTION_ID       : UUID;
+      PROMPT_ID          : UUID            not null;
+      USER_ID            : String(100);
+      MODEL_USED         : String(100);
+      INPUT_TEXT         : LargeString;
+      OUTPUT_TEXT        : LargeString;
+      EXECUTION_TIME_MS  : Integer;
+      STATUS             : String(20)      default 'PENDING';
+      QUALITY_SCORE      : Decimal(5,2);
+      ALIGNMENT_SCORE    : Decimal(5,2);
+      BUSINESS_SCORE     : Decimal(5,2);
+      CONFIDENCE_SCORE   : Decimal(5,2);
+      HALLUCINATION_RISK : Decimal(5,2);
+      ERROR_MESSAGE      : LargeString;
+      CREATED_ON         : Timestamp;
+}
+
+/** Z_PROMPT_VERSIONS – Prompt version history for governance */
+entity PromptVersions {
+  key VERSION_ID      : UUID;
+      PROMPT_ID       : UUID            not null;
+      VERSION_NUMBER  : Integer         not null;
+      PROMPT_TEXT     : LargeString     not null;
+      CHANGE_REASON   : String(500);
+      APPROVED_BY     : String(100);
+      CREATED_ON      : Timestamp;
+}
+
+/** Z_PROMPT_TEST_RESULTS – Automated test results per prompt */
+entity PromptTestResults {
+  key TEST_ID    : UUID;
+      PROMPT_ID  : UUID            not null;
+      TEST_TYPE  : String(30);
+      RESULT     : String(10);
+      SCORE      : Decimal(5,2);
+      NOTES      : LargeString;
+      CREATED_ON : Timestamp;
+}

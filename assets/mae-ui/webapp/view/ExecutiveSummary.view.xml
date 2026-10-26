@@ -24,15 +24,15 @@
       <VBox class="sapUiSmallMargin">
 
         <!-- Hero KPI Row -->
-        <l:Grid defaultSpan="XL2 L4 M6 S12" class="sapUiSmallMarginBottom">
-          <GenericTile header="Records Modernized" subheader="Total">
+        <l:Grid defaultSpan="XL2 L4 M6 S12" class="sapUiSmallMarginBottom" busy="{exec>/loading}" busyIndicatorDelay="0">
+          <GenericTile header="Records Modernized" subheader="Successful Updates" press=".onKpiPress">
             <TileContent unit="Records">
               <NumericContent value="{exec>/summary/totalSuccess}" scale="K" valueColor="Good" icon="sap-icon://customer"/>
             </TileContent>
           </GenericTile>
           <GenericTile header="Overall Success Rate" subheader="All Jobs">
             <TileContent unit="%">
-              <NumericContent value="{exec>/summary/overallSuccessRatePct}" valueColor="{= ${exec>/summary/overallSuccessRatePct} >= 99 ? 'Good' : 'Critical'}" icon="sap-icon://accept"/>
+              <NumericContent value="{exec>/summary/overallSuccessRate}" valueColor="{= ${exec>/summary/overallSuccessRate} >= 99 ? 'Good' : ${exec>/summary/overallSuccessRate} >= 95 ? 'Critical' : 'Error'}" icon="sap-icon://accept"/>
             </TileContent>
           </GenericTile>
           <GenericTile header="Jobs Completed" subheader="In Period">
@@ -40,19 +40,19 @@
               <NumericContent value="{exec>/summary/completedJobs}" valueColor="Good" icon="sap-icon://task"/>
             </TileContent>
           </GenericTile>
-          <GenericTile header="Failed Jobs" subheader="Requiring Attention">
-            <TileContent unit="Jobs">
-              <NumericContent value="{exec>/summary/failedJobs}" valueColor="{= ${exec>/summary/failedJobs} > 0 ? 'Error' : 'Good'}" icon="sap-icon://alert"/>
-            </TileContent>
-          </GenericTile>
           <GenericTile header="Hours Saved" subheader="vs Manual">
             <TileContent unit="Hrs">
               <NumericContent value="{exec>/summary/estimatedHoursSaved}" valueColor="Good" icon="sap-icon://time-entry-request"/>
             </TileContent>
           </GenericTile>
-          <GenericTile header="Total Accounts Processed" subheader="All Job Types">
-            <TileContent unit="Accounts">
-              <NumericContent value="{exec>/summary/totalAccounts}" scale="K" valueColor="Good" icon="sap-icon://account"/>
+          <GenericTile header="Cost Avoidance" subheader="Estimated Savings">
+            <TileContent unit="USD">
+              <NumericContent value="{exec>/summary/costAvoidance}" scale="K" valueColor="Good" icon="sap-icon://money-bills"/>
+            </TileContent>
+          </GenericTile>
+          <GenericTile header="AI Auto-Recoveries" subheader="Retry-Recovered Records">
+            <TileContent unit="Records">
+              <NumericContent value="{exec>/summary/aiRecoveries}" valueColor="Good" icon="sap-icon://da"/>
             </TileContent>
           </GenericTile>
         </l:Grid>

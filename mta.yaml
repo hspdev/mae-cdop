@@ -26,7 +26,11 @@ modules:
     type: nodejs
     path: assets/mae-cap-backend/gen/srv
     build-parameters:
-      builder: npm
+      builder: custom
+      commands:
+        - npm install --production --ignore-scripts --legacy-peer-deps
+        - node scripts/apply-shim.js
+      build-result: .
       ignore: [".env", "test/", "*.db"]
     parameters:
       instances: 1

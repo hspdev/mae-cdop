@@ -46,12 +46,9 @@ class BatchQueryClient {
     const results = [];
 
     for (const chunk of chunks) {
-      // Use CDS SELECT API — works with any database (SQLite table names resolved automatically)
       const rows = await this.db.run(
-        SELECT.from('mae.db.ContractAccounts', ca => {
-          ca.CONTRACT_ACCOUNT, ca.CUSTOMER_ID, ca.ACCOUNT_TYPE,
-          ca.STATUS, ca.STREET_ADDRESS, ca.CITY, ca.STATE_CODE, ca.ZIP_CODE
-        }).where({ CONTRACT_ACCOUNT: { in: chunk }, STATUS: 'ACTIVE' })
+        SELECT.from('mae.db.ContractAccounts')
+          .where({ CONTRACT_ACCOUNT: { in: chunk }, STATUS: 'ACTIVE' })
       );
       results.push(...(rows || []));
     }
@@ -93,25 +90,28 @@ class BatchQueryClient {
 
     // Step 1: recent address changes in that city using CDS API
     const historyRows = await this.db.run(
-      SELECT.from('mae.db.AddressHistory',
-        ['CONTRACT_ACCOUNT','NEW_STREET_ADDRESS','NEW_CITY','NEW_STATE_CODE','NEW_ZIP_CODE','CHANGE_DATE']
-      ).where(`NEW_CITY like '%${city}%' and CHANGE_DATE >= '${cutoff}'`)
+      SELECT.from('mae.db.AddressHistory')
+        .where({ NEW_CITY: { like: `%${city.replace(/'/g, "''")}%` } })
+        .where(`CHANGE_DATE >= '${cutoff}'`)
     );
 
     if (!historyRows || historyRows.length === 0) return [];
 
-    const contractAccounts = [...new Set(historyRows.map(r => r.CONTRACT_ACCOUNT))];
+    const contractAccounts = [...new Set(historyRows.map(r => r.contractAccount || r.CONTRACT_ACCOUNT))];
 
     // Step 2: full account detail in chunks
     const accounts = await this.loadContractAccounts(contractAccounts);
 
     // Step 3: attach new address
     const historyMap = {};
-    historyRows.forEach(h => { historyMap[h.CONTRACT_ACCOUNT] = h; });
+    historyRows.forEach(h => {
+      const key = h.contractAccount || h.CONTRACT_ACCOUNT;
+      historyMap[key] = h;
+    });
 
     return accounts.map(a => ({
       ...a,
-      newAddress: historyMap[a.CONTRACT_ACCOUNT || a.contractAccount] || null
+      newAddress: historyMap[a.contractAccount || a.CONTRACT_ACCOUNT] || null
     }));
   }
 

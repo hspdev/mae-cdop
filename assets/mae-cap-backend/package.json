@@ -47,6 +47,8 @@
   "jest": {
     "testEnvironment": "node",
     "testTimeout": 60000,
+    "testPathIgnorePatterns": ["/node_modules/", "/gen/"],
+    "watchPathIgnorePatterns": ["/gen/"],
     "collectCoverageFrom": [
       "srv/**/*.js",
       "!srv/**/*.test.js"
@@ -62,7 +64,7 @@
       "db": {
         "kind": "sqlite",
         "credentials": {
-          "url": ":memory:"
+          "url": "/home/vcap/data/mae-cdop.db"
         }
       },
       "auth": {

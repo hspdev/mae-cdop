@@ -43,6 +43,11 @@ service BulkJobService {
 
   entity PerformanceMetrics @readonly as projection on db.PerformanceMetrics;
 
+  entity PromptLibrary     as projection on db.PromptLibrary;
+  entity PromptExecutions  @readonly as projection on db.PromptExecutions;
+  entity PromptVersions    @readonly as projection on db.PromptVersions;
+  entity PromptTestResults @readonly as projection on db.PromptTestResults;
+
   // ── Actions ─────────────────────────────────────────────────────────────────
 
   @requires: 'BulkJobOperator'

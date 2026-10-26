@@ -45,9 +45,11 @@ describe('POST /api/bulk-jobs/:jobType', () => {
   });
 
   test('creates MAILING_ADDRESS_UPDATE job and returns 202', async () => {
+    // 11+ accounts triggers the async (202/QUEUED) path; ≤10 triggers direct (200)
+    const accounts = Array.from({ length: 11 }, (_, i) => `CA${String(i + 1).padStart(9, '0')}`);
     const res = await POST('/api/bulk-jobs/MAILING_ADDRESS_UPDATE', {
       parameters: {
-        contractAccounts: ['CA000000001'],
+        contractAccounts: accounts,
         newAddress: {
           streetAddress: '100 Test St',
           city: 'Allentown',

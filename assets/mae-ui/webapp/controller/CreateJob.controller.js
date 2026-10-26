@@ -43,7 +43,13 @@ sap.ui.define([
 
     onJobTypeChange: function (oEvent) {
       const jobType = oEvent.getSource().getSelectedKey();
-      this.getView().getModel("createJob").setProperty("/jobTypeDescription", JOB_TYPE_DESCRIPTIONS[jobType] || "");
+      const m = this.getView().getModel("createJob");
+      m.setProperty("/jobTypeDescription", JOB_TYPE_DESCRIPTIONS[jobType] || "");
+      // FILTER selection is only supported for MAILING_ADDRESS_UPDATE
+      if (jobType !== "MAILING_ADDRESS_UPDATE" && m.getProperty("/selectionMethod") === "FILTER") {
+        m.setProperty("/selectionMethod", "MANUAL");
+        this._updateSelectionSummary();
+      }
     },
 
     onSelectionMethodChange: function () {
@@ -102,7 +108,7 @@ sap.ui.define([
       const parameters = {};
 
       // Selection
-      if (d.selectionMethod === "FILTER") {
+      if (d.selectionMethod === "FILTER" && d.jobType === "MAILING_ADDRESS_UPDATE") {
         parameters.filter = { city: d.filter.city, daysBack: d.filter.daysBack };
         parameters.useExistingAddressHistory = d.addressSource === "HISTORY";
       } else if (d.selectionMethod === "MANUAL") {
@@ -110,6 +116,9 @@ sap.ui.define([
           .split(/[\n,]+/)
           .map(s => s.trim())
           .filter(Boolean);
+      } else if (d.selectionMethod === "FILTER" && d.jobType !== "MAILING_ADDRESS_UPDATE") {
+        // FILTER unsupported for other job types — treat as empty manual
+        parameters.contractAccounts = [];
       }
 
       // Job-type specific params
