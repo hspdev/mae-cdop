@@ -587,18 +587,18 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
 
         <!-- Charts -->
         <div id="br-charts-row" style="display:none;margin-bottom:16px">
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
             <div class="panel" id="br-chart-segment-panel">
               <div class="panel-header">Segment Distribution</div>
-              <div class="panel-body"><div id="br-chart-segment" style="display:flex;align-items:flex-end;gap:12px;height:120px;padding-bottom:24px;position:relative"></div></div>
+              <div class="panel-body" style="padding:16px 20px"><div id="br-chart-segment"></div></div>
             </div>
             <div class="panel" id="br-chart-region-panel">
               <div class="panel-header">Region Distribution</div>
-              <div class="panel-body"><div id="br-chart-region" style="display:flex;align-items:flex-end;gap:8px;height:120px;padding-bottom:24px;position:relative"></div></div>
+              <div class="panel-body" style="padding:16px 20px"><div id="br-chart-region"></div></div>
             </div>
             <div class="panel" id="br-chart-optin-panel">
               <div class="panel-header">Notification Opt-In</div>
-              <div class="panel-body"><div id="br-chart-optin" style="display:flex;align-items:flex-end;gap:16px;height:120px;padding-bottom:24px;position:relative"></div></div>
+              <div class="panel-body" style="padding:16px 20px"><div id="br-chart-optin"></div></div>
             </div>
           </div>
         </div>
@@ -636,10 +636,13 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
           @keyframes brSpin{to{transform:rotate(360deg)}}
           .br-sort-asc::after{content:' ↑'}
           .br-sort-desc::after{content:' ↓'}
-          .br-chart-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
-          .br-chart-bar{width:100%;border-radius:3px 3px 0 0;min-height:2px;transition:height .3s}
-          .br-chart-label{font-size:10px;color:#6a7988;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px}
-          .br-chart-val{font-size:11px;font-weight:600;color:#32363a}
+          /* Horizontal bar chart */
+          .br-hbar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+          .br-hbar-row:last-child{margin-bottom:0}
+          .br-hbar-label{font-size:12px;color:#32363a;width:100px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          .br-hbar-track{flex:1;background:#f0f2f5;border-radius:4px;height:22px;overflow:hidden}
+          .br-hbar-fill{height:100%;border-radius:4px;min-width:2px;transition:width .4s ease}
+          .br-hbar-value{font-size:12px;font-weight:600;color:#32363a;width:60px;flex-shrink:0;text-align:left;white-space:nowrap}
         </style>
       </div>
 
@@ -940,48 +943,63 @@ function brRenderCharts(summary) {
   if (!summary) return;
   document.getElementById('br-charts-row').style.display = '';
 
-  function buildBars(containerId, items, colors) {
+  // Build horizontal bar chart rows — zero overlap by design
+  function buildHBars(containerId, items, colors) {
     var el = document.getElementById(containerId);
-    if (!el || !items || !items.length) { if (el) el.closest('.panel').style.display='none'; return; }
-    el.closest('.panel').style.display = '';
-    var maxVal = Math.max.apply(null, items.map(function(x){return x.count;})) || 1;
-    el.innerHTML = items.slice(0,8).map(function(item, idx){
+    if (!el) return;
+    var panel = el.closest('.panel');
+    if (!items || !items.length) { if (panel) panel.style.display = 'none'; return; }
+    if (panel) panel.style.display = '';
+    var maxVal = Math.max.apply(null, items.map(function(x){ return x.count; })) || 1;
+    el.innerHTML = items.slice(0, 8).map(function(item, idx) {
       var pct = Math.round(item.count / maxVal * 100);
       var color = colors[idx % colors.length];
-      return '<div class="br-chart-bar-wrap" title="' + item.value + ': ' + item.count + '">' +
-        '<div class="br-chart-val">' + item.count.toLocaleString() + '</div>' +
-        '<div class="br-chart-bar" style="background:' + color + ';height:' + Math.max(pct*1.1, 4) + 'px"></div>' +
-        '<div class="br-chart-label">' + item.value + '</div>' +
-        '</div>';
+      var pctOfTotal = summary._total ? ' (' + Math.round(item.count / summary._total * 100) + '%)' : '';
+      return '<div class="br-hbar-row">' +
+        '<div class="br-hbar-label" title="' + item.value + '">' + item.value + '</div>' +
+        '<div class="br-hbar-track">' +
+          '<div class="br-hbar-fill" style="width:' + pct + '%;background:' + color + '"></div>' +
+        '</div>' +
+        '<div class="br-hbar-value">' + item.count.toLocaleString() + pctOfTotal + '</div>' +
+      '</div>';
     }).join('');
+  }
+
+  // Attach total to summary for % calculation
+  if (summary.bySegment && summary.bySegment.length) {
+    summary._total = summary.bySegment.reduce(function(s, x){ return s + x.count; }, 0);
   }
 
   var segColors = ['#0a6ed1','#107e3e','#e9730c'];
   var regColors = ['#0a6ed1','#107e3e','#e9730c','#6c3f8c','#c87941'];
-  buildBars('br-chart-segment', summary.bySegment, segColors);
-  buildBars('br-chart-region', summary.byRegion, regColors);
-  buildBars('br-chart-state', summary.byState, ['#0a6ed1','#107e3e','#e9730c','#6c3f8c','#c87941']);
 
-  // Opt-in chart derived from summary
+  buildHBars('br-chart-segment', summary.bySegment, segColors);
+  buildHBars('br-chart-region', summary.byRegion, regColors);
+
+  // Opt-In chart: two rows — Opted In and No Opt-In
   var optInEl = document.getElementById('br-chart-optin');
   var optInPanel = optInEl ? optInEl.closest('.panel') : null;
-  if (summary.bySegment && optInEl) {
-    optInPanel.style.display = '';
-    var total = summary.bySegment.reduce(function(s,x){return s+x.count;},0);
+  if (optInEl && summary.bySegment) {
+    if (optInPanel) optInPanel.style.display = '';
+    var total = summary._total || summary.bySegment.reduce(function(s,x){ return s+x.count; }, 0);
     var optInEst = Math.round(total * 0.85);
     var noOptIn  = total - optInEst;
     var maxV = Math.max(optInEst, noOptIn) || 1;
-    optInEl.innerHTML =
-      '<div class="br-chart-bar-wrap">' +
-        '<div class="br-chart-val">' + optInEst.toLocaleString() + '</div>' +
-        '<div class="br-chart-bar" style="background:#107e3e;height:' + Math.round(optInEst/maxV*100) + 'px"></div>' +
-        '<div class="br-chart-label">Opted In</div>' +
-      '</div>' +
-      '<div class="br-chart-bar-wrap">' +
-        '<div class="br-chart-val">' + noOptIn.toLocaleString() + '</div>' +
-        '<div class="br-chart-bar" style="background:#bb0000;height:' + Math.round(noOptIn/maxV*100) + 'px"></div>' +
-        '<div class="br-chart-label">No Opt-In</div>' +
+    var rows = [
+      { label: 'Opted In',   count: optInEst, color: '#107e3e' },
+      { label: 'No Opt-In',  count: noOptIn,  color: '#bb0000' }
+    ];
+    optInEl.innerHTML = rows.map(function(r) {
+      var pct = Math.round(r.count / maxV * 100);
+      var pctOfT = Math.round(r.count / total * 100);
+      return '<div class="br-hbar-row">' +
+        '<div class="br-hbar-label">' + r.label + '</div>' +
+        '<div class="br-hbar-track">' +
+          '<div class="br-hbar-fill" style="width:' + pct + '%;background:' + r.color + '"></div>' +
+        '</div>' +
+        '<div class="br-hbar-value">' + r.count.toLocaleString() + ' (' + pctOfT + '%)</div>' +
       '</div>';
+    }).join('');
   }
 }
 
