@@ -71,9 +71,10 @@ jobs:
 
       - name: Install CF CLI v8
         run: |
-          curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" | tar -zx
-          sudo mv cf /usr/local/bin/cf
-          cf version
+          curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" -o cf8.tgz
+          tar -zxf cf8.tgz
+          sudo install -m 0755 cf /usr/local/bin/cf
+          /usr/local/bin/cf version
 
       - name: Install MTA plugin
         run: cf install-plugin multiapps -f
