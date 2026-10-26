@@ -1223,23 +1223,19 @@ const PROMPTS = [
 async function seedPrompts(db) {
   const now = new Date().toISOString();
 
-  // Idempotency check: skip if any prompts already exist
-  const existing = await db.run(
-    SELECT.from('mae.db.PromptLibrary').limit(1)
+  // Per-prompt idempotency: load existing titles, skip those already present
+  const existingRows = await db.run(
+    SELECT.from('mae.db.PromptLibrary').columns('TITLE')
   ).catch(() => []);
-
-  if (existing && existing.length > 0) {
-    const count = await db.run(
-      SELECT.one.from('mae.db.PromptLibrary').columns('count(*) as CNT')
-    ).catch(() => ({ CNT: 0 }));
-    const n = count ? count.CNT : 0;
-    console.log(`[seed-prompts] Prompt library already contains ${n} record(s) — skipping seed.`);
-    return 0;
+  const existingTitles = new Set((existingRows || []).map(r => r.TITLE));
+  if (existingTitles.size > 0) {
+    console.log(`[seed-prompts] Found ${existingTitles.size} existing prompt(s) — inserting only new ones.`);
   }
 
   let inserted = 0;
 
   for (const p of PROMPTS) {
+    if (existingTitles.has(p.title)) continue;
     await db.run(
       INSERT.into('mae.db.PromptLibrary').entries({
         PROMPT_ID:           uuidv4(),
@@ -1269,7 +1265,7 @@ async function seedPrompts(db) {
     inserted++;
   }
 
-  console.log(`[seed-prompts] Inserted ${inserted} prompts across 16 categories.`);
+  console.log(`[seed-prompts] Done. Inserted ${inserted} new prompt(s) (${existingTitles.size} already existed).`);
   return inserted;
 }
 
@@ -1286,7 +1282,9 @@ if (require.main === module) {
 
       const count = await seedPrompts(db);
       if (count > 0) {
-        console.log(`[seed-prompts] Done. ${count} prompts seeded successfully.`);
+        console.log(`[seed-prompts] Done. ${count} new prompts inserted.`);
+      } else {
+        console.log(`[seed-prompts] All prompts already present — nothing to insert.`);
       }
       process.exit(0);
     } catch (err) {
