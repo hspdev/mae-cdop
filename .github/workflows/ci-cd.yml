@@ -92,31 +92,9 @@ jobs:
           NEW_REFRESH=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('refresh_token',''))")
           if [[ "$ACCESS_TOKEN" == ERROR* ]]; then echo "Token refresh failed: $ACCESS_TOKEN"; exit 1; fi
           echo "Access token obtained (${#ACCESS_TOKEN} chars)"
-          # Write CF config.json using python3 (avoids heredoc indentation issues)
+          # Write CF config.json via python3 one-liner — no heredoc, no multi-line issues
           mkdir -p ~/.cf
-          AT="$ACCESS_TOKEN" RT="$NEW_REFRESH" python3 - <<'PYEOF'
-import json, os
-cfg = {
-  "ConfigVersion": 3,
-  "Target": "https://api.cf.us10.hana.ondemand.com",
-  "APIVersion": "3.229.0",
-  "AuthorizationEndpoint": "https://login.cf.us10.hana.ondemand.com",
-  "UaaEndpoint": "https://uaa.cf.us10.hana.ondemand.com",
-  "AccessToken": "bearer " + os.environ["AT"],
-  "RefreshToken": os.environ["RT"],
-  "OrganizationFields": {"GUID": "", "Name": os.environ.get("CF_ORG", "")},
-  "SpaceFields": {"GUID": "", "Name": os.environ.get("CF_SPACE", "")},
-  "SSLDisabled": False,
-  "Locale": "",
-  "PluginRepos": [],
-  "MinCLIVersion": "",
-  "MinRecommendedCLIVersion": ""
-}
-path = os.path.expanduser("~/.cf/config.json")
-with open(path, "w") as f:
-    json.dump(cfg, f)
-print(f"CF config written to {path} (Target={cfg['Target']})")
-PYEOF
+          AT="$ACCESS_TOKEN" RT="$NEW_REFRESH" ORG="${CF_ORG}" SPACE="${CF_SPACE}" python3 -c "import json,os; cfg={'ConfigVersion':3,'Target':'https://api.cf.us10.hana.ondemand.com','APIVersion':'3.229.0','AuthorizationEndpoint':'https://login.cf.us10.hana.ondemand.com','UaaEndpoint':'https://uaa.cf.us10.hana.ondemand.com','AccessToken':'bearer '+os.environ['AT'],'RefreshToken':os.environ['RT'],'OrganizationFields':{'GUID':'','Name':os.environ['ORG']},'SpaceFields':{'GUID':'','Name':os.environ['SPACE']},'SSLDisabled':False,'Locale':'','PluginRepos':[],'MinCLIVersion':'','MinRecommendedCLIVersion':''}; json.dump(cfg,open(os.path.expanduser('~/.cf/config.json'),'w')); print('CF config written')"
           /usr/local/bin/cf target -o "${CF_ORG}" -s "${CF_SPACE}"
           echo "CF login successful"
 
