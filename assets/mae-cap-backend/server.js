@@ -15,6 +15,18 @@ cds.on('bootstrap', (app) => {
   app.use('/api', restApi);
   app.use('/api/prompts', promptApi);
   app.get('/health', (req, res) => res.json({ status: 'UP', service: 'mae-cap-backend' }));
+
+  // Admin: trigger prompt seed on demand — returns result or error detail
+  app.get('/api/admin/seed-prompts', async (req, res) => {
+    try {
+      const db = await cds.connect.to('db');
+      const inserted = await _seedPromptLibrary(db);
+      res.json({ ok: true, inserted });
+    } catch (err) {
+      console.error('[admin/seed-prompts] error:', err.message, err.stack);
+      res.status(500).json({ ok: false, error: err.message, stack: err.stack });
+    }
+  });
 });
 
 // Auto-deploy schema to SQLite file DB on first boot (creates tables if not exist)
@@ -45,9 +57,10 @@ cds.on('served', async () => {
 
     // Seed prompt library — per-title idempotency, inserts only missing prompts
     try {
-      await _seedPromptLibrary(db);
+      const n = await _seedPromptLibrary(db);
+      console.log(`[prompts-seed] startup seed completed: inserted ${n}`);
     } catch (promptSeedErr) {
-      cds.log('server').warn('Prompt seed failed:', promptSeedErr.message);
+      console.error('[prompts-seed] startup seed threw:', promptSeedErr.message, promptSeedErr.stack);
     }
 
   } catch (err) {
@@ -269,17 +282,22 @@ async function _seedDemoData(db) {
 async function _seedPromptLibrary(db) {
   const { v4: uuidv4 } = require('uuid');
   const now = new Date().toISOString();
+  console.log('[prompts-seed] starting...');
 
   // Load existing prompt titles to support per-title idempotency
   let existingTitles = new Set();
   try {
     const rows = await db.run(SELECT.from('mae.db.PromptLibrary').columns('TITLE'));
     existingTitles = new Set((rows || []).map(r => r.TITLE));
-  } catch (_) {}
+    console.log(`[prompts-seed] existing titles in DB: ${existingTitles.size}`);
+  } catch (selErr) {
+    console.error('[prompts-seed] SELECT existing titles failed:', selErr.message);
+  }
 
   const SYSTEM_CTX = 'You are an AI assistant for DUCI utility company operations platform. Provide specific, actionable responses based on actual system data. Always cite data sources and recommend concrete next steps.';
 
   const PROMPTS = require('./scripts/seed-prompts-data');
+  console.log(`[prompts-seed] loaded ${PROMPTS.length} prompts from data file`);
 
   let inserted = 0;
   const entries = [];
@@ -298,14 +316,29 @@ async function _seedPromptLibrary(db) {
   }
 
   if (entries.length > 0) {
-    // Batch insert in chunks of 50
+    console.log(`[prompts-seed] inserting ${entries.length} new prompts in batches...`);
+    // Batch insert in chunks of 50 — retry once on failure (table may not exist yet)
     const BATCH = 50;
+    let failed = false;
     for (let i = 0; i < entries.length; i += BATCH) {
-      await db.run(INSERT.into('mae.db.PromptLibrary').entries(entries.slice(i, i + BATCH)));
-      inserted += Math.min(BATCH, entries.length - i);
+      try {
+        await db.run(INSERT.into('mae.db.PromptLibrary').entries(entries.slice(i, i + BATCH)));
+        inserted += Math.min(BATCH, entries.length - i);
+        console.log(`[prompts-seed] batch at offset ${i} OK, total so far: ${inserted}`);
+      } catch (batchErr) {
+        console.error(`[prompts-seed] batch insert failed at offset ${i}:`, batchErr.message, batchErr.stack);
+        failed = true;
+        break;
+      }
     }
+    if (failed) {
+      console.error('[prompts-seed] seed incomplete due to batch failure');
+    }
+  } else {
+    console.log('[prompts-seed] no new entries to insert (all already exist)');
   }
 
+  console.log(`[prompts-seed] done: inserted=${inserted}, skipped=${existingTitles.size}`);
   cds.log('server').info(`[prompts] Inserted ${inserted} new prompt(s) — ${existingTitles.size} already existed`);
   return inserted;
 }
