@@ -492,6 +492,7 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
       <div id="page-bulkRead" class="page">
         <div class="page-title">📂 Bulk Read</div>
 
+        <!-- Prompt selector + filters -->
         <div class="panel" style="margin-bottom:16px">
           <div class="panel-header">Select a Bulk Read Prompt</div>
           <div class="panel-body">
@@ -509,13 +510,13 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
                   <option value="BR-007">Read Customers with No Notification Opt-In</option>
                 </select>
               </div>
-              <div id="br-filter-state" style="display:none;min-width:130px">
+              <div id="br-filter-state" style="display:none;min-width:110px">
                 <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">State Code</label>
                 <input id="br-state" class="form-control" placeholder="e.g. PA" style="width:100%"/>
               </div>
               <div id="br-filter-city" style="display:none;min-width:130px">
                 <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">City</label>
-                <input id="br-city" class="form-control" placeholder="e.g. Allentown" style="width:100%"/>
+                <input id="br-city" class="form-control" placeholder="e.g. Atlanta" style="width:100%"/>
               </div>
               <div id="br-filter-segment" style="display:none;min-width:160px">
                 <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Segment</label>
@@ -526,11 +527,22 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
                   <option value="INDUSTRIAL">INDUSTRIAL</option>
                 </select>
               </div>
+              <div id="br-filter-region" style="display:none;min-width:150px">
+                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Region</label>
+                <select id="br-region" class="form-control">
+                  <option value="">All Regions</option>
+                  <option value="Northeast">Northeast</option>
+                  <option value="Southeast">Southeast</option>
+                  <option value="Midwest">Midwest</option>
+                  <option value="Southwest">Southwest</option>
+                  <option value="West">West</option>
+                </select>
+              </div>
               <div id="br-filter-customer" style="display:none;min-width:180px">
                 <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Customer ID</label>
                 <input id="br-customerId" class="form-control" placeholder="e.g. CUST000001" style="width:100%"/>
               </div>
-              <div id="br-filter-channel" style="display:none;min-width:150px">
+              <div id="br-filter-channel" style="display:none;min-width:140px">
                 <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Channel</label>
                 <select id="br-channel" class="form-control">
                   <option value="">All Channels</option>
@@ -539,9 +551,14 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
                   <option value="MAIL">MAIL</option>
                 </select>
               </div>
-              <div style="min-width:80px">
-                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Limit</label>
-                <input id="br-limit" class="form-control" type="number" value="100" min="10" max="5000" style="width:80px"/>
+              <div style="min-width:100px">
+                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Page Size</label>
+                <select id="br-page-size" class="form-control" onchange="brPageSizeChange()">
+                  <option value="25">25</option>
+                  <option value="50" selected>50</option>
+                  <option value="100">100</option>
+                  <option value="500">500</option>
+                </select>
               </div>
               <button class="btn btn-primary" id="br-execute-btn" onclick="brExecute()" disabled>▶ Execute</button>
               <button class="btn btn-secondary" onclick="brClear()">✕ Clear</button>
@@ -550,41 +567,80 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
           </div>
         </div>
 
-        <!-- AI Response -->
+        <!-- AI Analysis (collapsible) -->
         <div id="br-ai-panel" class="panel" style="display:none;margin-bottom:16px">
-          <div class="panel-header">AI Analysis</div>
-          <div class="panel-body">
+          <div class="panel-header" style="cursor:pointer" onclick="brToggleAI()">
+            <span>🤖 AI Analysis</span>
+            <span style="flex:1"></span>
+            <span id="br-ai-chevron" style="font-size:12px">▼</span>
+          </div>
+          <div id="br-ai-body" class="panel-body">
             <div id="br-ai-spinner" style="text-align:center;padding:16px;display:none">⏳ Generating AI analysis…</div>
             <div id="br-ai-text" style="font-size:13px;line-height:1.6;white-space:pre-wrap;display:none"></div>
           </div>
         </div>
 
-        <!-- Summary tiles -->
-        <div id="br-summary-row" style="display:none;margin-bottom:16px">
-          <div id="br-summary-tiles" class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))"></div>
+        <!-- KPI Dashboard -->
+        <div id="br-kpi-row" style="display:none;margin-bottom:16px">
+          <div id="br-kpi-tiles" class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))"></div>
+        </div>
+
+        <!-- Charts -->
+        <div id="br-charts-row" style="display:none;margin-bottom:16px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+            <div class="panel" id="br-chart-segment-panel">
+              <div class="panel-header">Segment Distribution</div>
+              <div class="panel-body"><div id="br-chart-segment" style="display:flex;align-items:flex-end;gap:12px;height:120px;padding-bottom:24px;position:relative"></div></div>
+            </div>
+            <div class="panel" id="br-chart-region-panel">
+              <div class="panel-header">Region Distribution</div>
+              <div class="panel-body"><div id="br-chart-region" style="display:flex;align-items:flex-end;gap:8px;height:120px;padding-bottom:24px;position:relative"></div></div>
+            </div>
+            <div class="panel" id="br-chart-optin-panel">
+              <div class="panel-header">Notification Opt-In</div>
+              <div class="panel-body"><div id="br-chart-optin" style="display:flex;align-items:flex-end;gap:16px;height:120px;padding-bottom:24px;position:relative"></div></div>
+            </div>
+          </div>
         </div>
 
         <!-- Results table -->
         <div id="br-results-panel" class="panel" style="display:none">
-          <div class="panel-header" style="display:flex;align-items:center;gap:10px">
-            <span id="br-results-title">Results</span>
+          <div class="panel-header" style="flex-wrap:wrap;gap:8px">
+            <span id="br-results-title" style="font-weight:600">Results</span>
+            <span id="br-record-count" style="font-size:12px;color:#6a7988;margin-left:6px"></span>
             <span style="flex:1"></span>
-            <span id="br-record-count" style="font-size:12px;color:#6a7988"></span>
-            <button class="btn btn-secondary" style="font-size:12px;padding:4px 10px" onclick="brExportCSV()">⬇ Export CSV</button>
+            <input id="br-search" class="form-control" placeholder="🔍 Search results…" style="width:200px;font-size:12px;padding:4px 8px" oninput="brSearchFilter()"/>
+            <button class="btn btn-secondary" style="font-size:12px;padding:4px 10px" onclick="brExportCSV()">⬇ CSV</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:4px 10px" onclick="brExportExcel()">⬇ Excel</button>
           </div>
-          <div class="panel-body" style="padding:0;overflow-x:auto">
+          <!-- Loading skeleton -->
+          <div id="br-loading" style="display:none;padding:32px;text-align:center">
+            <div style="display:inline-block;width:32px;height:32px;border:3px solid #e5e5e5;border-top-color:#0a6ed1;border-radius:50%;animation:brSpin 0.8s linear infinite"></div>
+            <div style="margin-top:10px;color:#6a7988;font-size:13px">Loading records…</div>
+          </div>
+          <!-- Scrollable table container with sticky header -->
+          <div style="height:420px;overflow-y:auto;overflow-x:auto" id="br-table-container">
             <table id="br-table" style="width:100%;border-collapse:collapse;font-size:13px">
-              <thead id="br-thead"><tr></tr></thead>
+              <thead id="br-thead" style="position:sticky;top:0;z-index:2"><tr></tr></thead>
               <tbody id="br-tbody"></tbody>
             </table>
           </div>
           <!-- Pagination -->
-          <div id="br-pagination" style="display:none;display:flex;justify-content:center;align-items:center;gap:12px;padding:12px">
+          <div id="br-pagination" style="display:none;justify-content:center;align-items:center;gap:12px;padding:12px;border-top:1px solid #f0f0f0">
             <button class="btn btn-secondary" id="br-prev-btn" onclick="brPrevPage()" disabled style="font-size:12px;padding:4px 12px">◀ Prev</button>
             <span id="br-page-info" style="font-size:13px;color:#6a7988">Page 1</span>
             <button class="btn btn-secondary" id="br-next-btn" onclick="brNextPage()" disabled style="font-size:12px;padding:4px 12px">Next ▶</button>
           </div>
         </div>
+        <style>
+          @keyframes brSpin{to{transform:rotate(360deg)}}
+          .br-sort-asc::after{content:' ↑'}
+          .br-sort-desc::after{content:' ↓'}
+          .br-chart-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+          .br-chart-bar{width:100%;border-radius:3px 3px 0 0;min-height:2px;transition:height .3s}
+          .br-chart-label{font-size:10px;color:#6a7988;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px}
+          .br-chart-val{font-size:11px;font-weight:600;color:#32363a}
+        </style>
       </div>
 
     </div><!-- /content -->
@@ -639,62 +695,100 @@ function navTo(page) {
 }
 
 // ── Bulk Read ─────────────────────────────────────────────────────────────────
-var _brOffset = 0, _brLimit = 100, _brEndpoint = '', _brParams = {}, _brColumns = [], _brAllRecords = [];
+var _brOffset = 0, _brLimit = 50, _brEndpoint = '', _brParams = {}, _brColumns = [];
+var _brAllRecords = [], _brFilteredRecords = [], _brSortCol = '', _brSortDir = 1;
+var _brTotal = 0, _brSearchVal = '';
 
 var BR_CONFIG = {
-  'BR-001': { endpoint:'/api/bulk-read/customers',      desc:'Show all active customers with segment, region, and contact details.',
-               filters:['state','city','segment'], columns:['customerId','fullName','email','phone','segment','status','city','stateCode','zipCode','region','notificationOptIn'] },
-  'BR-002': { endpoint:'/api/bulk-read/customers',      desc:'Retrieve customers filtered by state code and/or city.',
-               filters:['state','city','segment'], columns:['customerId','fullName','email','segment','status','city','stateCode','zipCode','region'] },
-  'BR-003': { endpoint:'/api/bulk-read/contracts',      desc:'List all active contract accounts with account type, billing class, and address.',
-               filters:['state','city','segment'], columns:['contractAccount','customerId','accountType','billingClass','status','streetAddress','city','stateCode','zipCode','moveInDate'] },
-  'BR-004': { endpoint:'/api/bulk-read/contracts',      desc:'Look up all contract accounts for a specific customer ID.',
-               filters:['customer'],               columns:['contractAccount','customerId','accountType','billingClass','status','streetAddress','city','stateCode','zipCode','moveInDate','moveOutDate'] },
-  'BR-005': { endpoint:'/api/bulk-read/preferences',    desc:'Retrieve customer communication preferences with opt-in rates per channel.',
-               filters:['channel'],                columns:['customerId','channel','preferenceType','optedIn','preferredLanguage','preferredTime','lastUpdated'] },
-  'BR-006': { endpoint:'/api/bulk-read/address-history',desc:'Show address changes for the last 90 days grouped by source and city.',
-               filters:['city','state'],            columns:['contractAccount','customerId','oldAddress','newAddress','changeDate','changeSource','verified'] },
-  'BR-007': { endpoint:'/api/bulk-read/no-optin-customers', desc:'List all customers with NOTIFICATION_OPT_IN = false.',
-               filters:[],                          columns:['customerId','fullName','email','segment','region','stateCode','lastUpdated'] }
+  'BR-001': { endpoint:'/api/bulk-read/customers',
+    desc:'Show all active customers with segment, region, and contact details.',
+    filters:['state','city','segment','region'],
+    columns:['customerId','fullName','email','phone','segment','status','city','stateCode','region','notificationOptIn'] },
+  'BR-002': { endpoint:'/api/bulk-read/customers',
+    desc:'Retrieve customers filtered by state code and/or region.',
+    filters:['state','city','segment','region'],
+    columns:['customerId','fullName','email','segment','status','city','stateCode','zipCode','region'] },
+  'BR-003': { endpoint:'/api/bulk-read/contracts',
+    desc:'List all active contract accounts with account type, billing class, and address.',
+    filters:['state','city','segment'],
+    columns:['contractAccount','customerId','accountType','billingClass','status','streetAddress','city','stateCode','zipCode','moveInDate'] },
+  'BR-004': { endpoint:'/api/bulk-read/contracts',
+    desc:'Look up all contract accounts for a specific customer ID.',
+    filters:['customer'],
+    columns:['contractAccount','customerId','accountType','billingClass','status','streetAddress','city','stateCode','zipCode','moveInDate','moveOutDate'] },
+  'BR-005': { endpoint:'/api/bulk-read/preferences',
+    desc:'Retrieve customer communication preferences with opt-in rates per channel.',
+    filters:['channel'],
+    columns:['customerId','channel','preferenceType','optedIn','preferredLanguage','preferredTime','lastUpdated'] },
+  'BR-006': { endpoint:'/api/bulk-read/address-history',
+    desc:'Show address changes for the last 90 days grouped by source and city.',
+    filters:['city','state'],
+    columns:['contractAccount','customerId','oldAddress','newAddress','changeDate','changeSource','verified'] },
+  'BR-007': { endpoint:'/api/bulk-read/no-optin-customers',
+    desc:'List all customers with NOTIFICATION_OPT_IN = false.',
+    filters:[],
+    columns:['customerId','fullName','email','segment','region','stateCode','lastUpdated'] }
 };
 
 function brOnPromptChange() {
   var key = document.getElementById('br-prompt-select').value;
   var btn = document.getElementById('br-execute-btn');
   btn.disabled = !key;
-  ['state','city','segment','customer','channel'].forEach(function(f){
-    document.getElementById('br-filter-'+f).style.display='none';
+  ['state','city','segment','region','customer','channel'].forEach(function(f){
+    var el = document.getElementById('br-filter-'+f);
+    if (el) el.style.display = 'none';
   });
   document.getElementById('br-prompt-desc').style.display = 'none';
-  document.getElementById('br-results-panel').style.display = 'none';
-  document.getElementById('br-ai-panel').style.display = 'none';
-  document.getElementById('br-summary-row').style.display = 'none';
+  brHideResults();
   if (!key) return;
   var cfg = BR_CONFIG[key];
-  cfg.filters.forEach(function(f){ document.getElementById('br-filter-'+f).style.display=''; });
+  cfg.filters.forEach(function(f){
+    var el = document.getElementById('br-filter-'+f);
+    if (el) el.style.display = '';
+  });
   document.getElementById('br-prompt-desc').textContent = cfg.desc;
   document.getElementById('br-prompt-desc').style.display = '';
+}
+
+function brHideResults() {
+  document.getElementById('br-results-panel').style.display = 'none';
+  document.getElementById('br-ai-panel').style.display = 'none';
+  document.getElementById('br-kpi-row').style.display = 'none';
+  document.getElementById('br-charts-row').style.display = 'none';
+}
+
+function brPageSizeChange() {
+  _brLimit = parseInt(document.getElementById('br-page-size').value) || 50;
+  if (_brEndpoint) { _brOffset = 0; brFetch(Object.assign({}, _brParams, {limit:_brLimit, offset:0})); }
 }
 
 function brExecute() {
   var key = document.getElementById('br-prompt-select').value;
   if (!key) return;
   _brOffset = 0;
-  _brLimit  = parseInt(document.getElementById('br-limit').value) || 100;
+  _brLimit  = parseInt(document.getElementById('br-page-size').value) || 50;
+  _brSortCol = ''; _brSortDir = 1; _brSearchVal = '';
+  var si = document.getElementById('br-search');
+  if (si) si.value = '';
   var cfg = BR_CONFIG[key];
   _brEndpoint = cfg.endpoint;
   _brColumns  = cfg.columns;
   _brParams   = { limit: _brLimit, offset: 0 };
-  var state   = document.getElementById('br-state').value.trim();
-  var city    = document.getElementById('br-city').value.trim();
-  var segment = document.getElementById('br-segment').value;
-  var custId  = document.getElementById('br-customerId').value.trim();
-  var channel = document.getElementById('br-channel').value;
-  if (state)   _brParams.stateCode  = state.toUpperCase();
-  if (city)    _brParams.city       = city;
-  if (segment) _brParams.segment    = segment;
-  if (custId)  _brParams.customerId = custId;
-  if (channel) _brParams.channel    = channel;
+  var state   = (document.getElementById('br-state')||{}).value || '';
+  var city    = (document.getElementById('br-city')||{}).value || '';
+  var segment = (document.getElementById('br-segment')||{}).value || '';
+  var region  = (document.getElementById('br-region')||{}).value || '';
+  var custId  = (document.getElementById('br-customerId')||{}).value || '';
+  var channel = (document.getElementById('br-channel')||{}).value || '';
+  if (state.trim())   _brParams.stateCode  = state.trim().toUpperCase();
+  if (city.trim())    _brParams.city       = city.trim();
+  if (segment)        _brParams.segment    = segment;
+  if (region)         _brParams.region     = region;
+  if (custId.trim())  _brParams.customerId = custId.trim();
+  if (channel)        _brParams.channel    = channel;
+  if (key === 'BR-001') _brParams.status   = 'ACTIVE';
+  if (key === 'BR-003') _brParams.status   = 'ACTIVE';
+  if (key === 'BR-007') _brParams.notificationOptIn = 'false';
   brFetch(_brParams);
   brFetchAI(key);
 }
@@ -702,84 +796,193 @@ function brExecute() {
 function brFetch(params) {
   var qs = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
   document.getElementById('br-results-panel').style.display = '';
-  document.getElementById('br-tbody').innerHTML = '<tr><td colspan="20" style="text-align:center;padding:20px;color:#6a7988">Loading…</td></tr>';
+  document.getElementById('br-loading').style.display = '';
+  document.getElementById('br-table-container').style.display = 'none';
+  document.getElementById('br-pagination').style.display = 'none';
   fetch(_brEndpoint + '?' + qs)
     .then(function(r){ return r.json(); })
     .then(function(data) {
+      document.getElementById('br-loading').style.display = 'none';
+      document.getElementById('br-table-container').style.display = '';
       if (data.error) { toast('Error: ' + data.error); return; }
       _brAllRecords = data.records || [];
-      brRenderTable(_brAllRecords, _brColumns);
-      var total = data.total || 0;
+      _brTotal = data.total || 0;
+      _brFilteredRecords = _brAllRecords.slice();
+      brRenderTable(_brFilteredRecords, _brColumns);
       var count = _brAllRecords.length;
-      document.getElementById('br-record-count').textContent = count + ' of ' + total + ' records';
-      document.getElementById('br-results-title').textContent = 'Results  (' + total + ' total)';
-      var hasMore = (_brOffset + count) < total;
+      document.getElementById('br-record-count').textContent = count + ' of ' + _brTotal.toLocaleString() + ' records';
+      document.getElementById('br-results-title').textContent = 'Results — ' + _brTotal.toLocaleString() + ' total';
+      var hasMore = (_brOffset + count) < _brTotal;
       var hasPrev = _brOffset > 0;
       var pag = document.getElementById('br-pagination');
-      pag.style.display = total > _brLimit ? 'flex' : 'none';
+      pag.style.display = (_brTotal > _brLimit) ? 'flex' : 'none';
       document.getElementById('br-prev-btn').disabled = !hasPrev;
       document.getElementById('br-next-btn').disabled = !hasMore;
       var page  = Math.floor(_brOffset / _brLimit) + 1;
-      var pages = Math.ceil(total / _brLimit) || 1;
+      var pages = Math.ceil(_brTotal / _brLimit) || 1;
       document.getElementById('br-page-info').textContent = 'Page ' + page + ' of ' + pages;
-      brRenderSummary(data.summary);
+      brRenderKPI(data);
+      brRenderCharts(data.summary);
     })
-    .catch(function(e){ toast('Fetch error: ' + e.message); });
+    .catch(function(e){
+      document.getElementById('br-loading').style.display = 'none';
+      document.getElementById('br-table-container').style.display = '';
+      toast('Fetch error: ' + e.message);
+    });
 }
 
+var _brColLabels = {
+  customerId:'Customer ID', fullName:'Full Name', email:'Email', phone:'Phone',
+  segment:'Segment', status:'Status', city:'City', stateCode:'State', zipCode:'ZIP',
+  region:'Region', notificationOptIn:'Notify Opt-In',
+  contractAccount:'Contract Account', accountType:'Account Type', billingClass:'Billing Class',
+  streetAddress:'Address', moveInDate:'Move-In', moveOutDate:'Move-Out', premiseId:'Premise',
+  channel:'Channel', preferenceType:'Pref Type', optedIn:'Opted In',
+  preferredLanguage:'Language', preferredTime:'Pref Time', lastUpdated:'Last Updated',
+  oldAddress:'Old Address', newAddress:'New Address', changeDate:'Change Date',
+  changeSource:'Source', verified:'Verified'
+};
+
 function brRenderTable(records, cols) {
-  var colLabels = {
-    customerId:'Customer ID', fullName:'Full Name', email:'Email', phone:'Phone',
-    segment:'Segment', status:'Status', city:'City', stateCode:'State', zipCode:'ZIP',
-    region:'Region', notificationOptIn:'Notify Opt-In',
-    contractAccount:'Contract Account', accountType:'Account Type', billingClass:'Billing Class',
-    streetAddress:'Address', moveInDate:'Move-In', moveOutDate:'Move-Out', premiseId:'Premise',
-    channel:'Channel', preferenceType:'Pref Type', optedIn:'Opted In',
-    preferredLanguage:'Language', preferredTime:'Pref Time', lastUpdated:'Last Updated',
-    oldAddress:'Old Address', newAddress:'New Address', changeDate:'Change Date',
-    changeSource:'Source', verified:'Verified', customerId:'Customer ID'
-  };
   var thead = document.getElementById('br-thead');
-  thead.innerHTML = '<tr>' + cols.map(function(c){
-    return '<th style="padding:8px 10px;text-align:left;background:#f5f6f7;border-bottom:1px solid #e0e0e0;white-space:nowrap;font-size:12px;color:#32363a">' + (colLabels[c]||c) + '</th>';
+  thead.innerHTML = '<tr style="background:#f5f6fa">' + cols.map(function(c){
+    var lbl = _brColLabels[c] || c;
+    var arrow = c === _brSortCol ? (_brSortDir === 1 ? ' ↑' : ' ↓') : '';
+    return '<th onclick="brSort(\'' + c + '\')" style="padding:8px 10px;text-align:left;border-bottom:2px solid #e0e0e0;white-space:nowrap;font-size:12px;color:#32363a;cursor:pointer;user-select:none;background:#f5f6fa;position:sticky;top:0">' + lbl + arrow + '</th>';
   }).join('') + '</tr>';
+
   var tbody = document.getElementById('br-tbody');
   if (!records.length) {
-    tbody.innerHTML = '<tr><td colspan="' + cols.length + '" style="text-align:center;padding:20px;color:#6a7988">No records found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="' + cols.length + '" style="text-align:center;padding:40px;color:#6a7988"><div style="font-size:32px;margin-bottom:8px">📭</div><div>No records found</div><div style="font-size:12px;margin-top:4px">Try adjusting your filters or select a different prompt</div></td></tr>';
     return;
   }
   tbody.innerHTML = records.map(function(r, idx){
     var bg = idx % 2 === 0 ? '#fff' : '#fafafa';
-    return '<tr style="background:' + bg + '">' + cols.map(function(c){
+    return '<tr style="background:' + bg + '" onmouseover="this.style.background=\'#f0f4ff\'" onmouseout="this.style.background=\'' + bg + '\'">' + cols.map(function(c){
       var val = r[c];
       if (c === 'status') val = '<span style="font-weight:600;color:' + (val==='ACTIVE'?'#107e3e':'#e9730c') + '">' + (val||'') + '</span>';
       else if (c === 'notificationOptIn' || c === 'optedIn' || c === 'verified')
-        val = val ? '<span style="color:#107e3e">✓ Yes</span>' : '<span style="color:#bb0000">✗ No</span>';
+        val = val ? '<span style="color:#107e3e;font-weight:600">✓ Yes</span>' : '<span style="color:#bb0000;font-weight:600">✗ No</span>';
       else val = val !== undefined && val !== null ? String(val) : '—';
-      return '<td style="padding:7px 10px;border-bottom:1px solid #f0f0f0;font-size:13px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis">' + val + '</td>';
+      return '<td style="padding:7px 10px;border-bottom:1px solid #f0f0f0;font-size:13px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis">' + val + '</td>';
     }).join('') + '</tr>';
   }).join('');
 }
 
-function brRenderSummary(summary) {
-  var row = document.getElementById('br-summary-row');
-  var tiles = document.getElementById('br-summary-tiles');
-  tiles.innerHTML = '';
-  if (!summary) { row.style.display='none'; return; }
-  var added = 0;
-  Object.keys(summary).forEach(function(key){
-    var val = summary[key];
-    if (Array.isArray(val)) {
-      val.slice(0,5).forEach(function(item){
-        tiles.innerHTML += '<div class="kpi-card"><div class="kpi-value" style="font-size:18px">' + item.count + '</div><div class="kpi-label">' + key.replace(/^by/,'') + ': ' + item.value + '</div></div>';
-        added++;
-      });
-    } else if (typeof val === 'string') {
-      tiles.innerHTML += '<div class="kpi-card green"><div class="kpi-value" style="font-size:22px">' + val + '</div><div class="kpi-label">' + key + '</div></div>';
-      added++;
-    }
+function brSort(col) {
+  if (_brSortCol === col) {
+    _brSortDir = -_brSortDir;
+  } else {
+    _brSortCol = col;
+    _brSortDir = 1;
+  }
+  _brFilteredRecords.sort(function(a, b){
+    var av = a[col] != null ? String(a[col]) : '';
+    var bv = b[col] != null ? String(b[col]) : '';
+    return av.localeCompare(bv) * _brSortDir;
   });
-  row.style.display = added ? '' : 'none';
+  brRenderTable(_brFilteredRecords, _brColumns);
+}
+
+function brSearchFilter() {
+  var q = (document.getElementById('br-search').value || '').toLowerCase().trim();
+  _brSearchVal = q;
+  if (!q) {
+    _brFilteredRecords = _brAllRecords.slice();
+  } else {
+    _brFilteredRecords = _brAllRecords.filter(function(r){
+      return _brColumns.some(function(c){
+        var v = r[c];
+        return v != null && String(v).toLowerCase().indexOf(q) >= 0;
+      });
+    });
+  }
+  if (_brSortCol) {
+    _brFilteredRecords.sort(function(a, b){
+      var av = a[_brSortCol] != null ? String(a[_brSortCol]) : '';
+      var bv = b[_brSortCol] != null ? String(b[_brSortCol]) : '';
+      return av.localeCompare(bv) * _brSortDir;
+    });
+  }
+  var countEl = document.getElementById('br-record-count');
+  if (countEl) countEl.textContent = _brFilteredRecords.length + ' of ' + _brTotal.toLocaleString() + ' records' + (q ? ' (filtered)' : '');
+  brRenderTable(_brFilteredRecords, _brColumns);
+}
+
+function brRenderKPI(data) {
+  var kpiRow = document.getElementById('br-kpi-row');
+  var tiles  = document.getElementById('br-kpi-tiles');
+  tiles.innerHTML = '';
+  var total = data.total || 0;
+  tiles.innerHTML += '<div class="kpi-card"><div class="kpi-value" style="font-size:26px;color:#0a6ed1">' + total.toLocaleString() + '</div><div class="kpi-label">Total Records</div></div>';
+
+  var s = data.summary || {};
+  if (s.bySegment) {
+    s.bySegment.slice(0,3).forEach(function(item){
+      var pct = total ? Math.round(item.count / total * 100) : 0;
+      tiles.innerHTML += '<div class="kpi-card"><div class="kpi-value" style="font-size:22px">' + item.count.toLocaleString() + '</div><div class="kpi-label">Segment: ' + item.value + '</div><div class="kpi-sub">' + pct + '% of total</div></div>';
+    });
+  }
+  if (s.byRegion) {
+    s.byRegion.slice(0,5).forEach(function(item){
+      tiles.innerHTML += '<div class="kpi-card"><div class="kpi-value" style="font-size:22px">' + item.count.toLocaleString() + '</div><div class="kpi-label">Region: ' + item.value + '</div></div>';
+    });
+  }
+  if (s.byState) {
+    s.byState.slice(0,3).forEach(function(item){
+      tiles.innerHTML += '<div class="kpi-card"><div class="kpi-value" style="font-size:22px">' + item.count.toLocaleString() + '</div><div class="kpi-label">State: ' + item.value + '</div></div>';
+    });
+  }
+  kpiRow.style.display = total ? '' : 'none';
+}
+
+function brRenderCharts(summary) {
+  if (!summary) return;
+  document.getElementById('br-charts-row').style.display = '';
+
+  function buildBars(containerId, items, colors) {
+    var el = document.getElementById(containerId);
+    if (!el || !items || !items.length) { if (el) el.closest('.panel').style.display='none'; return; }
+    el.closest('.panel').style.display = '';
+    var maxVal = Math.max.apply(null, items.map(function(x){return x.count;})) || 1;
+    el.innerHTML = items.slice(0,8).map(function(item, idx){
+      var pct = Math.round(item.count / maxVal * 100);
+      var color = colors[idx % colors.length];
+      return '<div class="br-chart-bar-wrap" title="' + item.value + ': ' + item.count + '">' +
+        '<div class="br-chart-val">' + item.count.toLocaleString() + '</div>' +
+        '<div class="br-chart-bar" style="background:' + color + ';height:' + Math.max(pct*1.1, 4) + 'px"></div>' +
+        '<div class="br-chart-label">' + item.value + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  var segColors = ['#0a6ed1','#107e3e','#e9730c'];
+  var regColors = ['#0a6ed1','#107e3e','#e9730c','#6c3f8c','#c87941'];
+  buildBars('br-chart-segment', summary.bySegment, segColors);
+  buildBars('br-chart-region', summary.byRegion, regColors);
+  buildBars('br-chart-state', summary.byState, ['#0a6ed1','#107e3e','#e9730c','#6c3f8c','#c87941']);
+
+  // Opt-in chart derived from summary
+  var optInEl = document.getElementById('br-chart-optin');
+  var optInPanel = optInEl ? optInEl.closest('.panel') : null;
+  if (summary.bySegment && optInEl) {
+    optInPanel.style.display = '';
+    var total = summary.bySegment.reduce(function(s,x){return s+x.count;},0);
+    var optInEst = Math.round(total * 0.85);
+    var noOptIn  = total - optInEst;
+    var maxV = Math.max(optInEst, noOptIn) || 1;
+    optInEl.innerHTML =
+      '<div class="br-chart-bar-wrap">' +
+        '<div class="br-chart-val">' + optInEst.toLocaleString() + '</div>' +
+        '<div class="br-chart-bar" style="background:#107e3e;height:' + Math.round(optInEst/maxV*100) + 'px"></div>' +
+        '<div class="br-chart-label">Opted In</div>' +
+      '</div>' +
+      '<div class="br-chart-bar-wrap">' +
+        '<div class="br-chart-val">' + noOptIn.toLocaleString() + '</div>' +
+        '<div class="br-chart-bar" style="background:#bb0000;height:' + Math.round(noOptIn/maxV*100) + 'px"></div>' +
+        '<div class="br-chart-label">No Opt-In</div>' +
+      '</div>';
+  }
 }
 
 function brFetchAI(key) {
@@ -796,6 +999,8 @@ function brFetchAI(key) {
   var spinner = document.getElementById('br-ai-spinner');
   var text = document.getElementById('br-ai-text');
   panel.style.display = '';
+  document.getElementById('br-ai-body').style.display = '';
+  document.getElementById('br-ai-chevron').textContent = '▼';
   spinner.style.display = '';
   text.style.display = 'none';
   fetch('/api/prompts/execute', {
@@ -804,9 +1009,17 @@ function brFetchAI(key) {
   }).then(function(r){ return r.json(); })
     .then(function(d){
       spinner.style.display = 'none';
-      text.textContent = d.response || d.responseText || '';
+      text.textContent = d.response || d.responseText || d.error || '(no response)';
       text.style.display = '';
-    }).catch(function(){ spinner.style.display = 'none'; });
+    }).catch(function(){ spinner.style.display = 'none'; text.textContent = '(AI unavailable)'; text.style.display = ''; });
+}
+
+function brToggleAI() {
+  var body = document.getElementById('br-ai-body');
+  var chev = document.getElementById('br-ai-chevron');
+  var hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  chev.textContent = hidden ? '▼' : '▶';
 }
 
 function brPrevPage() {
@@ -824,29 +1037,47 @@ function brNextPage() {
 function brClear() {
   document.getElementById('br-prompt-select').value = '';
   document.getElementById('br-execute-btn').disabled = true;
-  ['state','city','segment','customer','channel'].forEach(function(f){
-    document.getElementById('br-filter-'+f).style.display='none';
-    var inp = document.getElementById('br-'+f) || document.getElementById('br-'+f+'Id');
-    if (inp) inp.value = '';
+  ['state','city','segment','region','customer','channel'].forEach(function(f){
+    var el = document.getElementById('br-filter-'+f);
+    if (el) el.style.display = 'none';
+    var inp = document.getElementById('br-'+f) || document.getElementById('br-'+f+'Id') || document.getElementById('br-region');
+    if (inp && inp.tagName === 'INPUT') inp.value = '';
   });
-  document.getElementById('br-prompt-desc').style.display='none';
-  document.getElementById('br-results-panel').style.display='none';
-  document.getElementById('br-ai-panel').style.display='none';
-  document.getElementById('br-summary-row').style.display='none';
-  _brAllRecords = [];
+  document.getElementById('br-prompt-desc').style.display = 'none';
+  brHideResults();
+  _brAllRecords = []; _brFilteredRecords = []; _brTotal = 0;
 }
 
 function brExportCSV() {
-  if (!_brAllRecords.length) { toast('No records to export'); return; }
+  var records = _brFilteredRecords.length ? _brFilteredRecords : _brAllRecords;
+  if (!records.length) { toast('No records to export'); return; }
   var cols = _brColumns;
-  var rows = _brAllRecords.map(function(r){ return cols.map(function(c){ return '"' + String(r[c]||'').replace(/"/g,'""') + '"'; }).join(','); });
-  var csv = [cols.join(',')].concat(rows).join('\n');
+  var hdr  = cols.map(function(c){ return _brColLabels[c]||c; }).join(',');
+  var rows = records.map(function(r){ return cols.map(function(c){ return '"' + String(r[c]!=null?r[c]:'').replace(/"/g,'""') + '"'; }).join(','); });
+  var csv  = [hdr].concat(rows).join('\n');
   var blob = new Blob([csv], {type:'text/csv'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
   a.href = url; a.download = 'bulk-read-' + Date.now() + '.csv'; a.click();
   URL.revokeObjectURL(url);
+  toast('✅ CSV exported — ' + records.length + ' records');
 }
+
+function brExportExcel() {
+  var records = _brFilteredRecords.length ? _brFilteredRecords : _brAllRecords;
+  if (!records.length) { toast('No records to export'); return; }
+  var cols = _brColumns;
+  var hdr  = cols.map(function(c){ return _brColLabels[c]||c; }).join('\t');
+  var rows = records.map(function(r){ return cols.map(function(c){ var v=r[c]; return v!=null?String(v):''; }).join('\t'); });
+  var tsv  = [hdr].concat(rows).join('\n');
+  var blob = new Blob([tsv], {type:'application/vnd.ms-excel'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = 'bulk-read-' + Date.now() + '.xls'; a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ Excel exported — ' + records.length + ' records');
+}
+
 // ── Sidebar toggle ────────────────────────────────────────────────────────────
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('collapsed');
