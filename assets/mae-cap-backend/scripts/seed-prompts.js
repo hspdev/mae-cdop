@@ -1222,49 +1222,54 @@ const PROMPTS = [
  * @returns {Promise<number>} Number of prompts inserted
  */
 async function seedPrompts(db) {
-  const { SELECT, INSERT } = cds;
   const now = new Date().toISOString();
 
   // Per-prompt idempotency: load existing titles, skip those already present
-  const existingRows = await db.run(
-    SELECT.from('mae.db.PromptLibrary').columns('TITLE')
-  ).catch(() => []);
-  const existingTitles = new Set((existingRows || []).map(r => r.TITLE));
-  if (existingTitles.size > 0) {
-    console.log(`[seed-prompts] Found ${existingTitles.size} existing prompt(s) — inserting only new ones.`);
+  let existingTitles = new Set();
+  try {
+    const rows = await db.run(cds.ql.SELECT.from('mae.db.PromptLibrary').columns('TITLE'));
+    existingTitles = new Set((rows || []).map(r => r.TITLE));
+    if (existingTitles.size > 0) {
+      console.log(`[seed-prompts] Found ${existingTitles.size} existing prompt(s) — inserting only new ones.`);
+    }
+  } catch (e) {
+    console.log('[seed-prompts] Could not read existing prompts:', e.message);
   }
 
   let inserted = 0;
 
   for (const p of PROMPTS) {
     if (existingTitles.has(p.title)) continue;
-    await db.run(
-      INSERT.into('mae.db.PromptLibrary').entries({
-        PROMPT_ID:           uuidv4(),
-        TITLE:               p.title,
-        DESCRIPTION:         p.text.length > 200
-          ? p.text.substring(0, 197) + '...'
-          : p.text,
-        CATEGORY:            p.cat,
-        PROMPT_TEXT:         p.text,
-        SYSTEM_CONTEXT:      SYSTEM_CONTEXT,
-        TAGS:                p.tags,
-        PERSONA:             p.persona,
-        JOB_TYPE:            p.jobType || null,
-        VERSION:             1,
-        STATUS:              'ACTIVE',
-        OWNER:               'SYSTEM',
-        USAGE_COUNT:         0,
-        AVG_QUALITY_SCORE:   0,
-        AVG_ALIGNMENT_SCORE: 0,
-        AVG_BUSINESS_SCORE:  0,
-        IS_FAVORITE:         false,
-        IS_RECOMMENDED:      p.recommended || false,
-        CREATED_ON:          now,
-        UPDATED_ON:          now
-      })
-    );
-    inserted++;
+    try {
+      const desc = p.text.length > 200 ? p.text.substring(0, 197) + '...' : p.text;
+      await db.run(
+        cds.ql.INSERT.into('mae.db.PromptLibrary').entries({
+          PROMPT_ID:           uuidv4(),
+          TITLE:               p.title,
+          DESCRIPTION:         desc,
+          CATEGORY:            p.cat,
+          PROMPT_TEXT:         p.text,
+          SYSTEM_CONTEXT:      SYSTEM_CONTEXT,
+          TAGS:                p.tags,
+          PERSONA:             p.persona,
+          JOB_TYPE:            p.jobType || null,
+          VERSION:             1,
+          STATUS:              'ACTIVE',
+          OWNER:               'SYSTEM',
+          USAGE_COUNT:         0,
+          AVG_QUALITY_SCORE:   0,
+          AVG_ALIGNMENT_SCORE: 0,
+          AVG_BUSINESS_SCORE:  0,
+          IS_FAVORITE:         false,
+          IS_RECOMMENDED:      p.recommended ? true : false,
+          CREATED_ON:          now,
+          UPDATED_ON:          now
+        })
+      );
+      inserted++;
+    } catch (e) {
+      console.log(`[seed-prompts] Failed to insert "${p.title}":`, e.message);
+    }
   }
 
   console.log(`[seed-prompts] Done. Inserted ${inserted} new prompt(s) (${existingTitles.size} already existed).`);
