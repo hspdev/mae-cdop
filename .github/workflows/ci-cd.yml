@@ -83,37 +83,41 @@ jobs:
         env:
           CF_REFRESH_TOKEN: ${{ secrets.CF_REFRESH_TOKEN }}
         run: |
-          cf api ${CF_API}
-          # Exchange refresh token for access token via UAA
+          # Exchange refresh token for new access+refresh tokens via UAA
           RESPONSE=$(curl -s -X POST "${CF_UAA}/oauth/token" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -H "Authorization: Basic Y2Y6" \
             -d "grant_type=refresh_token&refresh_token=${CF_REFRESH_TOKEN}")
           ACCESS_TOKEN=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('access_token','ERROR: '+str(d)))")
-          REFRESH_TOKEN=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('refresh_token',''))")
+          NEW_REFRESH=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('refresh_token',''))")
           if [[ "$ACCESS_TOKEN" == ERROR* ]]; then echo "Token refresh failed: $ACCESS_TOKEN"; exit 1; fi
           echo "Access token obtained (${#ACCESS_TOKEN} chars)"
-          # Write tokens into CF config directly
+          # Write CF config.json using python3 (avoids heredoc indentation issues)
           mkdir -p ~/.cf
-          cat > ~/.cf/config.json <<EOF
-          {
-            "ConfigVersion": 3,
-            "Target": "https://api.cf.us10.hana.ondemand.com",
-            "APIVersion": "3.229.0",
-            "AuthorizationEndpoint": "https://login.cf.us10.hana.ondemand.com",
-            "UaaEndpoint": "https://uaa.cf.us10.hana.ondemand.com",
-            "AccessToken": "bearer ${ACCESS_TOKEN}",
-            "RefreshToken": "${REFRESH_TOKEN}",
-            "OrganizationFields": {"GUID": "", "Name": "${CF_ORG}"},
-            "SpaceFields": {"GUID": "", "Name": "${CF_SPACE}"},
-            "SSLDisabled": false,
-            "Locale": "",
-            "PluginRepos": [],
-            "MinCLIVersion": "",
-            "MinRecommendedCLIVersion": ""
-          }
-          EOF
-          cf target -o "${CF_ORG}" -s "${CF_SPACE}"
+          AT="$ACCESS_TOKEN" RT="$NEW_REFRESH" python3 - <<'PYEOF'
+import json, os
+cfg = {
+  "ConfigVersion": 3,
+  "Target": "https://api.cf.us10.hana.ondemand.com",
+  "APIVersion": "3.229.0",
+  "AuthorizationEndpoint": "https://login.cf.us10.hana.ondemand.com",
+  "UaaEndpoint": "https://uaa.cf.us10.hana.ondemand.com",
+  "AccessToken": "bearer " + os.environ["AT"],
+  "RefreshToken": os.environ["RT"],
+  "OrganizationFields": {"GUID": "", "Name": os.environ.get("CF_ORG", "")},
+  "SpaceFields": {"GUID": "", "Name": os.environ.get("CF_SPACE", "")},
+  "SSLDisabled": False,
+  "Locale": "",
+  "PluginRepos": [],
+  "MinCLIVersion": "",
+  "MinRecommendedCLIVersion": ""
+}
+path = os.path.expanduser("~/.cf/config.json")
+with open(path, "w") as f:
+    json.dump(cfg, f)
+print(f"CF config written to {path} (Target={cfg['Target']})")
+PYEOF
+          /usr/local/bin/cf target -o "${CF_ORG}" -s "${CF_SPACE}"
           echo "CF login successful"
 
       - name: Abort conflicting MTA processes
