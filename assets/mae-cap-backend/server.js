@@ -11,7 +11,33 @@ const promptApi     = require('./srv/prompt-api');
 const path          = require('path');
 const fs            = require('fs');
 
+// ── Basic Auth — protects direct backend URL access ───────────────────────────
+// /health is exempted so CF platform health checks always pass.
+// Requests forwarded by the approuter arrive with the internal CF hostname and
+// carry no Authorization header — they are allowed through via the
+// X-Forwarded-Host check (approuter strips the public host).
+const _AUTH_PASSWORD = 'SAP@12345';
+const _AUTH_REALM    = 'MAE Operations Platform';
+
+function basicAuth(req, res, next) {
+  // Always allow CF health-check probe
+  if (req.path === '/health') return next();
+  // Allow requests forwarded internally by the approuter (no public Host)
+  const host = (req.headers['x-forwarded-host'] || req.headers['host'] || '');
+  if (!host.includes('mae-cap-backend.cfapps')) return next();
+
+  const authHeader = req.headers['authorization'] || '';
+  if (authHeader.startsWith('Basic ')) {
+    const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
+    const password = decoded.includes(':') ? decoded.split(':').slice(1).join(':') : decoded;
+    if (password === _AUTH_PASSWORD) return next();
+  }
+  res.set('WWW-Authenticate', `Basic realm="${_AUTH_REALM}"`);
+  res.status(401).send('Unauthorized — password required');
+}
+
 cds.on('bootstrap', (app) => {
+  app.use(basicAuth);
   app.use('/api', restApi);
   app.use('/api/prompts', promptApi);
   app.get('/health', (req, res) => res.json({ status: 'UP', service: 'mae-cap-backend' }));
