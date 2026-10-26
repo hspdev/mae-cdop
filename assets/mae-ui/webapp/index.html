@@ -149,6 +149,7 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
     <nav>
       <div class="nav-item active" id="nav-dashboard" onclick="navTo('dashboard')"><span class="icon">🏠</span><span class="nav-label">Dashboard</span></div>
       <div class="nav-item" id="nav-copilot" onclick="navTo('copilot')"><span class="icon">🤖</span><span class="nav-label">Operations Copilot</span></div>
+      <div class="nav-item" id="nav-bulkRead" onclick="navTo('bulkRead')"><span class="icon">📂</span><span class="nav-label">Bulk Read</span></div>
       <div class="nav-item" id="nav-createJob" onclick="navTo('createJob')"><span class="icon">➕</span><span class="nav-label">Create Job</span></div>
       <div class="nav-item" id="nav-jobMonitor" onclick="navTo('jobMonitor')"><span class="icon">📋</span><span class="nav-label">Job Monitor</span></div>
       <div class="nav-item" id="nav-failureAnalysis" onclick="navTo('failureAnalysis')"><span class="icon">⚠️</span><span class="nav-label">Failure Analysis</span></div>
@@ -487,6 +488,105 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
         </div>
       </div>
 
+      <!-- BULK READ -->
+      <div id="page-bulkRead" class="page">
+        <div class="page-title">📂 Bulk Read</div>
+
+        <div class="panel" style="margin-bottom:16px">
+          <div class="panel-header">Select a Bulk Read Prompt</div>
+          <div class="panel-body">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <div style="flex:1;min-width:220px">
+                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Prompt</label>
+                <select id="br-prompt-select" class="form-control" onchange="brOnPromptChange()">
+                  <option value="">— Select a bulk read prompt —</option>
+                  <option value="BR-001">Read All Active Customers</option>
+                  <option value="BR-002">Read Customers by State or Region</option>
+                  <option value="BR-003">Read All Active Contract Accounts</option>
+                  <option value="BR-004">Read Contract Accounts by Customer</option>
+                  <option value="BR-005">Read Customer Preferences in Bulk</option>
+                  <option value="BR-006">Read Recent Address History (90 days)</option>
+                  <option value="BR-007">Read Customers with No Notification Opt-In</option>
+                </select>
+              </div>
+              <div id="br-filter-state" style="display:none;min-width:130px">
+                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">State Code</label>
+                <input id="br-state" class="form-control" placeholder="e.g. PA" style="width:100%"/>
+              </div>
+              <div id="br-filter-city" style="display:none;min-width:130px">
+                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">City</label>
+                <input id="br-city" class="form-control" placeholder="e.g. Allentown" style="width:100%"/>
+              </div>
+              <div id="br-filter-segment" style="display:none;min-width:160px">
+                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Segment</label>
+                <select id="br-segment" class="form-control">
+                  <option value="">All Segments</option>
+                  <option value="RESIDENTIAL">RESIDENTIAL</option>
+                  <option value="COMMERCIAL">COMMERCIAL</option>
+                  <option value="INDUSTRIAL">INDUSTRIAL</option>
+                </select>
+              </div>
+              <div id="br-filter-customer" style="display:none;min-width:180px">
+                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Customer ID</label>
+                <input id="br-customerId" class="form-control" placeholder="e.g. CUST000001" style="width:100%"/>
+              </div>
+              <div id="br-filter-channel" style="display:none;min-width:150px">
+                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Channel</label>
+                <select id="br-channel" class="form-control">
+                  <option value="">All Channels</option>
+                  <option value="EMAIL">EMAIL</option>
+                  <option value="SMS">SMS</option>
+                  <option value="MAIL">MAIL</option>
+                </select>
+              </div>
+              <div style="min-width:80px">
+                <label style="font-size:12px;color:#6a7988;display:block;margin-bottom:4px">Limit</label>
+                <input id="br-limit" class="form-control" type="number" value="100" min="10" max="5000" style="width:80px"/>
+              </div>
+              <button class="btn btn-primary" id="br-execute-btn" onclick="brExecute()" disabled>▶ Execute</button>
+              <button class="btn btn-secondary" onclick="brClear()">✕ Clear</button>
+            </div>
+            <div id="br-prompt-desc" style="font-size:13px;color:#6a7988;margin-top:10px;display:none"></div>
+          </div>
+        </div>
+
+        <!-- AI Response -->
+        <div id="br-ai-panel" class="panel" style="display:none;margin-bottom:16px">
+          <div class="panel-header">AI Analysis</div>
+          <div class="panel-body">
+            <div id="br-ai-spinner" style="text-align:center;padding:16px;display:none">⏳ Generating AI analysis…</div>
+            <div id="br-ai-text" style="font-size:13px;line-height:1.6;white-space:pre-wrap;display:none"></div>
+          </div>
+        </div>
+
+        <!-- Summary tiles -->
+        <div id="br-summary-row" style="display:none;margin-bottom:16px">
+          <div id="br-summary-tiles" class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))"></div>
+        </div>
+
+        <!-- Results table -->
+        <div id="br-results-panel" class="panel" style="display:none">
+          <div class="panel-header" style="display:flex;align-items:center;gap:10px">
+            <span id="br-results-title">Results</span>
+            <span style="flex:1"></span>
+            <span id="br-record-count" style="font-size:12px;color:#6a7988"></span>
+            <button class="btn btn-secondary" style="font-size:12px;padding:4px 10px" onclick="brExportCSV()">⬇ Export CSV</button>
+          </div>
+          <div class="panel-body" style="padding:0;overflow-x:auto">
+            <table id="br-table" style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead id="br-thead"><tr></tr></thead>
+              <tbody id="br-tbody"></tbody>
+            </table>
+          </div>
+          <!-- Pagination -->
+          <div id="br-pagination" style="display:none;display:flex;justify-content:center;align-items:center;gap:12px;padding:12px">
+            <button class="btn btn-secondary" id="br-prev-btn" onclick="brPrevPage()" disabled style="font-size:12px;padding:4px 12px">◀ Prev</button>
+            <span id="br-page-info" style="font-size:13px;color:#6a7988">Page 1</span>
+            <button class="btn btn-secondary" id="br-next-btn" onclick="brNextPage()" disabled style="font-size:12px;padding:4px 12px">Next ▶</button>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /shell -->
@@ -505,7 +605,7 @@ input:checked+.toggle-slider:before{transform:translateX(18px)}
 
 <script>
 // ── Navigation ────────────────────────────────────────────────────────────────
-var NAV_PAGES = ['dashboard','copilot','createJob','jobMonitor','failureAnalysis','executive','insights','customers','promptLib'];
+var NAV_PAGES = ['dashboard','copilot','bulkRead','createJob','jobMonitor','failureAnalysis','executive','insights','customers','promptLib'];
 
 function showPage(id, navEl) {
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
@@ -535,9 +635,218 @@ function navTo(page) {
   if (page === 'promptLib') { loadPrompts(); }
   if (page === 'customers') { searchCustomers('all'); }
   if (page === 'insights') { loadInsights(); }
+  if (page === 'bulkRead') { /* ready on demand */ }
 }
 
-function toggleSidebar() {
+// ── Bulk Read ─────────────────────────────────────────────────────────────────
+var _brOffset = 0, _brLimit = 100, _brEndpoint = '', _brParams = {}, _brColumns = [], _brAllRecords = [];
+
+var BR_CONFIG = {
+  'BR-001': { endpoint:'/api/bulk-read/customers',      desc:'Show all active customers with segment, region, and contact details.',
+               filters:['state','city','segment'], columns:['customerId','fullName','email','phone','segment','status','city','stateCode','zipCode','region','notificationOptIn'] },
+  'BR-002': { endpoint:'/api/bulk-read/customers',      desc:'Retrieve customers filtered by state code and/or city.',
+               filters:['state','city','segment'], columns:['customerId','fullName','email','segment','status','city','stateCode','zipCode','region'] },
+  'BR-003': { endpoint:'/api/bulk-read/contracts',      desc:'List all active contract accounts with account type, billing class, and address.',
+               filters:['state','city','segment'], columns:['contractAccount','customerId','accountType','billingClass','status','streetAddress','city','stateCode','zipCode','moveInDate'] },
+  'BR-004': { endpoint:'/api/bulk-read/contracts',      desc:'Look up all contract accounts for a specific customer ID.',
+               filters:['customer'],               columns:['contractAccount','customerId','accountType','billingClass','status','streetAddress','city','stateCode','zipCode','moveInDate','moveOutDate'] },
+  'BR-005': { endpoint:'/api/bulk-read/preferences',    desc:'Retrieve customer communication preferences with opt-in rates per channel.',
+               filters:['channel'],                columns:['customerId','channel','preferenceType','optedIn','preferredLanguage','preferredTime','lastUpdated'] },
+  'BR-006': { endpoint:'/api/bulk-read/address-history',desc:'Show address changes for the last 90 days grouped by source and city.',
+               filters:['city','state'],            columns:['contractAccount','customerId','oldAddress','newAddress','changeDate','changeSource','verified'] },
+  'BR-007': { endpoint:'/api/bulk-read/no-optin-customers', desc:'List all customers with NOTIFICATION_OPT_IN = false.',
+               filters:[],                          columns:['customerId','fullName','email','segment','region','stateCode','lastUpdated'] }
+};
+
+function brOnPromptChange() {
+  var key = document.getElementById('br-prompt-select').value;
+  var btn = document.getElementById('br-execute-btn');
+  btn.disabled = !key;
+  ['state','city','segment','customer','channel'].forEach(function(f){
+    document.getElementById('br-filter-'+f).style.display='none';
+  });
+  document.getElementById('br-prompt-desc').style.display = 'none';
+  document.getElementById('br-results-panel').style.display = 'none';
+  document.getElementById('br-ai-panel').style.display = 'none';
+  document.getElementById('br-summary-row').style.display = 'none';
+  if (!key) return;
+  var cfg = BR_CONFIG[key];
+  cfg.filters.forEach(function(f){ document.getElementById('br-filter-'+f).style.display=''; });
+  document.getElementById('br-prompt-desc').textContent = cfg.desc;
+  document.getElementById('br-prompt-desc').style.display = '';
+}
+
+function brExecute() {
+  var key = document.getElementById('br-prompt-select').value;
+  if (!key) return;
+  _brOffset = 0;
+  _brLimit  = parseInt(document.getElementById('br-limit').value) || 100;
+  var cfg = BR_CONFIG[key];
+  _brEndpoint = cfg.endpoint;
+  _brColumns  = cfg.columns;
+  _brParams   = { limit: _brLimit, offset: 0 };
+  var state   = document.getElementById('br-state').value.trim();
+  var city    = document.getElementById('br-city').value.trim();
+  var segment = document.getElementById('br-segment').value;
+  var custId  = document.getElementById('br-customerId').value.trim();
+  var channel = document.getElementById('br-channel').value;
+  if (state)   _brParams.stateCode  = state.toUpperCase();
+  if (city)    _brParams.city       = city;
+  if (segment) _brParams.segment    = segment;
+  if (custId)  _brParams.customerId = custId;
+  if (channel) _brParams.channel    = channel;
+  brFetch(_brParams);
+  brFetchAI(key);
+}
+
+function brFetch(params) {
+  var qs = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
+  document.getElementById('br-results-panel').style.display = '';
+  document.getElementById('br-tbody').innerHTML = '<tr><td colspan="20" style="text-align:center;padding:20px;color:#6a7988">Loading…</td></tr>';
+  fetch(_brEndpoint + '?' + qs)
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if (data.error) { toast('Error: ' + data.error); return; }
+      _brAllRecords = data.records || [];
+      brRenderTable(_brAllRecords, _brColumns);
+      var total = data.total || 0;
+      var count = _brAllRecords.length;
+      document.getElementById('br-record-count').textContent = count + ' of ' + total + ' records';
+      document.getElementById('br-results-title').textContent = 'Results  (' + total + ' total)';
+      var hasMore = (_brOffset + count) < total;
+      var hasPrev = _brOffset > 0;
+      var pag = document.getElementById('br-pagination');
+      pag.style.display = total > _brLimit ? 'flex' : 'none';
+      document.getElementById('br-prev-btn').disabled = !hasPrev;
+      document.getElementById('br-next-btn').disabled = !hasMore;
+      var page  = Math.floor(_brOffset / _brLimit) + 1;
+      var pages = Math.ceil(total / _brLimit) || 1;
+      document.getElementById('br-page-info').textContent = 'Page ' + page + ' of ' + pages;
+      brRenderSummary(data.summary);
+    })
+    .catch(function(e){ toast('Fetch error: ' + e.message); });
+}
+
+function brRenderTable(records, cols) {
+  var colLabels = {
+    customerId:'Customer ID', fullName:'Full Name', email:'Email', phone:'Phone',
+    segment:'Segment', status:'Status', city:'City', stateCode:'State', zipCode:'ZIP',
+    region:'Region', notificationOptIn:'Notify Opt-In',
+    contractAccount:'Contract Account', accountType:'Account Type', billingClass:'Billing Class',
+    streetAddress:'Address', moveInDate:'Move-In', moveOutDate:'Move-Out', premiseId:'Premise',
+    channel:'Channel', preferenceType:'Pref Type', optedIn:'Opted In',
+    preferredLanguage:'Language', preferredTime:'Pref Time', lastUpdated:'Last Updated',
+    oldAddress:'Old Address', newAddress:'New Address', changeDate:'Change Date',
+    changeSource:'Source', verified:'Verified', customerId:'Customer ID'
+  };
+  var thead = document.getElementById('br-thead');
+  thead.innerHTML = '<tr>' + cols.map(function(c){
+    return '<th style="padding:8px 10px;text-align:left;background:#f5f6f7;border-bottom:1px solid #e0e0e0;white-space:nowrap;font-size:12px;color:#32363a">' + (colLabels[c]||c) + '</th>';
+  }).join('') + '</tr>';
+  var tbody = document.getElementById('br-tbody');
+  if (!records.length) {
+    tbody.innerHTML = '<tr><td colspan="' + cols.length + '" style="text-align:center;padding:20px;color:#6a7988">No records found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = records.map(function(r, idx){
+    var bg = idx % 2 === 0 ? '#fff' : '#fafafa';
+    return '<tr style="background:' + bg + '">' + cols.map(function(c){
+      var val = r[c];
+      if (c === 'status') val = '<span style="font-weight:600;color:' + (val==='ACTIVE'?'#107e3e':'#e9730c') + '">' + (val||'') + '</span>';
+      else if (c === 'notificationOptIn' || c === 'optedIn' || c === 'verified')
+        val = val ? '<span style="color:#107e3e">✓ Yes</span>' : '<span style="color:#bb0000">✗ No</span>';
+      else val = val !== undefined && val !== null ? String(val) : '—';
+      return '<td style="padding:7px 10px;border-bottom:1px solid #f0f0f0;font-size:13px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis">' + val + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+}
+
+function brRenderSummary(summary) {
+  var row = document.getElementById('br-summary-row');
+  var tiles = document.getElementById('br-summary-tiles');
+  tiles.innerHTML = '';
+  if (!summary) { row.style.display='none'; return; }
+  var added = 0;
+  Object.keys(summary).forEach(function(key){
+    var val = summary[key];
+    if (Array.isArray(val)) {
+      val.slice(0,5).forEach(function(item){
+        tiles.innerHTML += '<div class="kpi-card"><div class="kpi-value" style="font-size:18px">' + item.count + '</div><div class="kpi-label">' + key.replace(/^by/,'') + ': ' + item.value + '</div></div>';
+        added++;
+      });
+    } else if (typeof val === 'string') {
+      tiles.innerHTML += '<div class="kpi-card green"><div class="kpi-value" style="font-size:22px">' + val + '</div><div class="kpi-label">' + key + '</div></div>';
+      added++;
+    }
+  });
+  row.style.display = added ? '' : 'none';
+}
+
+function brFetchAI(key) {
+  var promptMap = {
+    'BR-001': 'Show me all active customers. Display their customer ID, full name, email, phone, segment, city, state, and region. Filter to STATUS = ACTIVE only. Paginate the results with 50 records per page and provide a summary count by segment and by region.',
+    'BR-002': 'Retrieve all customers filtered by a specific state or region. Show customer ID, full name, email, segment, city, state, and ZIP code. Allow filtering by STATE_CODE or REGION and show a count breakdown by city within the selected state or region.',
+    'BR-003': 'List all active contract accounts with their contract account number, linked customer ID, account type, billing class, premise ID, street address, city, state, and ZIP code. Filter to STATUS = ACTIVE. Show a summary count by account type and by billing class.',
+    'BR-004': 'Look up all contract accounts associated with a specific customer ID. Display each contract account number, account type, billing class, current address, move-in date, move-out date, and status. Show whether any accounts have had address changes in the last 90 days.',
+    'BR-005': 'Retrieve all customer communication preferences. Show customer ID, channel (EMAIL, SMS, MAIL), preference type, opted-in status, preferred language, and preferred contact time. Provide a summary of opt-in rates per channel and highlight customers who have opted out of all channels.',
+    'BR-006': 'Show address change history for the last 90 days. Include contract account number, customer ID, old address, new address, change date, change source, and whether the change was verified. Group results by change source and show which cities have seen the highest volume of address changes.',
+    'BR-007': 'List all customers where NOTIFICATION_OPT_IN = false or who have opted out of all communication channels in the preferences table. Show customer ID, full name, email, segment, region, and date of last preference update. Group by segment and region to identify concentrations of unreachable customers.'
+  };
+  var panel = document.getElementById('br-ai-panel');
+  var spinner = document.getElementById('br-ai-spinner');
+  var text = document.getElementById('br-ai-text');
+  panel.style.display = '';
+  spinner.style.display = '';
+  text.style.display = 'none';
+  fetch('/api/prompts/execute', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ promptText: promptMap[key], category:'Bulk Read', testType:'HAPPY' })
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      spinner.style.display = 'none';
+      text.textContent = d.response || d.responseText || '';
+      text.style.display = '';
+    }).catch(function(){ spinner.style.display = 'none'; });
+}
+
+function brPrevPage() {
+  if (_brOffset <= 0) return;
+  _brOffset = Math.max(0, _brOffset - _brLimit);
+  var p = Object.assign({}, _brParams, { limit: _brLimit, offset: _brOffset });
+  brFetch(p);
+}
+function brNextPage() {
+  _brOffset += _brLimit;
+  var p = Object.assign({}, _brParams, { limit: _brLimit, offset: _brOffset });
+  brFetch(p);
+}
+
+function brClear() {
+  document.getElementById('br-prompt-select').value = '';
+  document.getElementById('br-execute-btn').disabled = true;
+  ['state','city','segment','customer','channel'].forEach(function(f){
+    document.getElementById('br-filter-'+f).style.display='none';
+    var inp = document.getElementById('br-'+f) || document.getElementById('br-'+f+'Id');
+    if (inp) inp.value = '';
+  });
+  document.getElementById('br-prompt-desc').style.display='none';
+  document.getElementById('br-results-panel').style.display='none';
+  document.getElementById('br-ai-panel').style.display='none';
+  document.getElementById('br-summary-row').style.display='none';
+  _brAllRecords = [];
+}
+
+function brExportCSV() {
+  if (!_brAllRecords.length) { toast('No records to export'); return; }
+  var cols = _brColumns;
+  var rows = _brAllRecords.map(function(r){ return cols.map(function(c){ return '"' + String(r[c]||'').replace(/"/g,'""') + '"'; }).join(','); });
+  var csv = [cols.join(',')].concat(rows).join('\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'bulk-read-' + Date.now() + '.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
   document.getElementById('sidebar').classList.toggle('collapsed');
 }
 
