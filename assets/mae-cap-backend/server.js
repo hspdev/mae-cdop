@@ -16,7 +16,7 @@ const fs            = require('fs');
 // Requests forwarded by the approuter arrive with the internal CF hostname and
 // carry no Authorization header — they are allowed through via the
 // X-Forwarded-Host check (approuter strips the public host).
-const _AUTH_PASSWORD = 'SAP@12345';
+const _AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD;
 const _AUTH_REALM    = 'MAE Operations Platform';
 
 function basicAuth(req, res, next) {
@@ -27,7 +27,7 @@ function basicAuth(req, res, next) {
   if (!host.includes('mae-cap-backend.cfapps')) return next();
 
   const authHeader = req.headers['authorization'] || '';
-  if (authHeader.startsWith('Basic ')) {
+  if (authHeader.startsWith('Basic ') && _AUTH_PASSWORD) {
     const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
     const password = decoded.includes(':') ? decoded.split(':').slice(1).join(':') : decoded;
     if (password === _AUTH_PASSWORD) return next();
@@ -42,15 +42,28 @@ cds.on('bootstrap', (app) => {
   app.use('/api/prompts', promptApi);
   app.get('/health', (req, res) => res.json({ status: 'UP', service: 'mae-cap-backend' }));
 
-  // Admin: trigger prompt seed on demand — returns result or error detail
+  // Admin: trigger prompt seed on demand — requires BASIC_AUTH_PASSWORD
   app.get('/api/admin/seed-prompts', async (req, res) => {
+    const authHeader = req.headers['authorization'] || '';
+    if (_AUTH_PASSWORD) {
+      if (!authHeader.startsWith('Basic ')) {
+        res.set('WWW-Authenticate', `Basic realm="${_AUTH_REALM}"`);
+        return res.status(401).send('Unauthorized');
+      }
+      const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
+      const password = decoded.includes(':') ? decoded.split(':').slice(1).join(':') : decoded;
+      if (password !== _AUTH_PASSWORD) {
+        res.set('WWW-Authenticate', `Basic realm="${_AUTH_REALM}"`);
+        return res.status(401).send('Unauthorized');
+      }
+    }
     try {
       const db = await cds.connect.to('db');
       const inserted = await _seedPromptLibrary(db);
       res.json({ ok: true, inserted });
     } catch (err) {
       console.error('[admin/seed-prompts] error:', err.message, err.stack);
-      res.status(500).json({ ok: false, error: err.message, stack: err.stack });
+      res.status(500).json({ ok: false, error: 'Internal server error' });
     }
   });
 });

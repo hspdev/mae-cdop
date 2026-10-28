@@ -80,11 +80,21 @@ router.use(express.json({ limit: '50mb' }));
  *   filter-based params → ASYNC   (count unknown, always bulk)
  *   accountCount 0      → ASYNC   (engine validates and may fail gracefully)
  */
+const VALID_JOB_TYPES = new Set([
+  'MAILING_ADDRESS_UPDATE',
+  'CONTRACT_ACCOUNT_UPDATE',
+  'CUSTOMER_PREFERENCE_UPDATE',
+  'NOTIFICATION_REQUEST'
+]);
+
 router.post('/bulk-jobs/:jobType', async (req, res) => {
   try {
     const db = await cds.connect.to('db');
 
     const { jobType } = req.params;
+    if (!VALID_JOB_TYPES.has(jobType.toUpperCase())) {
+      return res.status(400).json({ error: `Unknown job type: ${jobType}` });
+    }
     const { parameters, simulationMode = false, description } = req.body;
     const params = parameters || req.body;
 
@@ -123,8 +133,8 @@ router.post('/bulk-jobs/:jobType', async (req, res) => {
       message: `Job queued successfully`
     });
   } catch (err) {
-    const status = err.message.includes('Unknown job type') ? 400 : 500;
-    res.status(status).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -161,7 +171,7 @@ router.get('/bulk-jobs/:batchId/status', async (req, res) => {
       throughputRps:     job.THROUGHPUT_RPS
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -204,7 +214,7 @@ router.get('/bulk-jobs/:batchId/result', async (req, res) => {
       performanceMetrics: metrics
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -222,7 +232,7 @@ router.post('/bulk-jobs/:batchId/reprocess', async (req, res) => {
 
     res.status(202).json({ newBatchId, message: 'Reprocessing started', status: 'QUEUED' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -236,7 +246,7 @@ router.post('/bulk-jobs/:batchId/cancel', async (req, res) => {
     const result = await engine.cancelJob(req.params.batchId);
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -266,7 +276,7 @@ router.post('/customers/batch', async (req, res) => {
       records
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -327,7 +337,7 @@ router.get('/summary', async (req, res) => {
       jobs
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -379,7 +389,7 @@ router.post('/copilot', async (req, res) => {
 
     res.json({ response, timestamp: new Date().toISOString() });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -434,7 +444,7 @@ router.patch('/contracts/:contractAccount/address', async (req, res) => {
 
     res.json({ success: true, contractAccount, message: 'Address updated directly' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -496,7 +506,7 @@ router.get('/contracts/:contractAccount', async (req, res) => {
       } : null
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -547,7 +557,7 @@ router.patch('/contracts/:contractAccount/account', async (req, res) => {
       updatedRecord:   updated
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -625,7 +635,7 @@ router.patch('/contracts/:contractAccount/preference', async (req, res) => {
       updatedRecord:   updated
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -645,26 +655,14 @@ router.get('/customers/search', async (req, res) => {
         SELECT.from('mae.db.ContractAccounts').limit(limit).orderBy('CREATED_ON desc')
       );
     } else {
-      const conditions = [];
-      if (city) {
-        const safeCity = city.replace(/'/g, "''");
-        conditions.push(`upper(ca.CITY) like upper('%${safeCity}%')`);
-      }
+      let q = SELECT.from('mae.db.ContractAccounts').limit(limit).orderBy('CREATED_ON desc');
+      const where = {};
+      if (city)  where.CITY = { like: `%${city}%` };
       if (query) {
-        const q = query.replace(/'/g, "''");
-        conditions.push(
-          `(upper(ca.CONTRACT_ACCOUNT) like upper('%${q}%') OR ` +
-          `upper(ca.CITY) like upper('%${q}%') OR ` +
-          `upper(ca.ZIP_CODE) like upper('%${q}%'))`
-        );
+        where['CONTRACT_ACCOUNT'] = { like: `%${query}%` };
       }
-      const where = conditions.join(' AND ');
-      accounts = await db.run(
-        SELECT.from({ ref: ['mae.db.ContractAccounts'], as: 'ca' })
-          .where(where)
-          .limit(limit)
-          .orderBy('ca.CREATED_ON desc')
-      );
+      q = q.where(where);
+      accounts = await db.run(q);
     }
 
     // Enrich with customer name if available
@@ -688,7 +686,7 @@ router.get('/customers/search', async (req, res) => {
 
     res.json({ count: enriched.length, records: enriched });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -762,7 +760,7 @@ router.get('/insights', async (req, res) => {
       dailyVolumes
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -821,7 +819,7 @@ router.post('/contracts/:contractAccount/notification', async (req, res) => {
       sentOn:         now
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -921,7 +919,7 @@ router.get('/bulk-read/customers', async (req, res) => {
       }))
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -983,7 +981,7 @@ router.get('/bulk-read/contracts', async (req, res) => {
       }))
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1040,7 +1038,7 @@ router.get('/bulk-read/preferences', async (req, res) => {
       }))
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1057,16 +1055,14 @@ router.get('/bulk-read/address-history', async (req, res) => {
     const off = Number(offset) || 0;
     const cutoff = new Date(Date.now() - Number(days) * 86400000).toISOString();
 
+    const where = { CHANGE_DATE: { '>=': cutoff } };
+    if (city)         where.NEW_CITY      = { like: `%${city}%` };
+    if (stateCode)    where.NEW_STATE_CODE = stateCode.toUpperCase();
+    if (changeSource) where.CHANGE_SOURCE  = changeSource;
+
     let q = SELECT.from('mae.db.AddressHistory')
+      .where(where)
       .orderBy('CHANGE_DATE desc');
-
-    // Date range filter via raw SQL fragment
-    const conditions = [`CHANGE_DATE >= '${cutoff}'`];
-    if (city)         conditions.push(`(NEW_CITY LIKE '%${city.replace(/'/g, "''")}%' OR OLD_CITY LIKE '%${city.replace(/'/g, "''")}%')`);
-    if (stateCode)    conditions.push(`(NEW_STATE_CODE = '${stateCode.toUpperCase()}' OR OLD_STATE_CODE = '${stateCode.toUpperCase()}')`);
-    if (changeSource) conditions.push(`CHANGE_SOURCE = '${changeSource.replace(/'/g, "''")}'`);
-
-    q = q.where(conditions.join(' AND '));
 
     const all = await db.run(q);
     const page = all.slice(off, off + lim);
@@ -1095,7 +1091,7 @@ router.get('/bulk-read/address-history', async (req, res) => {
       }))
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1135,7 +1131,7 @@ router.get('/bulk-read/no-optin-customers', async (req, res) => {
       }))
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
