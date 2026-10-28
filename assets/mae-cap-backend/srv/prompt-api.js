@@ -26,6 +26,15 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 router.use(express.json({ limit: '1mb' }));
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function validatePromptId(req, res, next) {
+  if (!UUID_RE.test(req.params.id)) return res.status(400).json({ error: 'Invalid prompt ID format' });
+  next();
+}
+
+router.param('id', (req, res, next, id) => validatePromptId(req, res, next));
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
@@ -608,6 +617,10 @@ router.post('/', async (req, res) => {
     if (!title || !category || !promptText) {
       return res.status(400).json({ error: 'title, category, and promptText are required' });
     }
+    if (title.length > 200)       return res.status(400).json({ error: 'title too long (max 200)' });
+    if (promptText.length > 10000) return res.status(400).json({ error: 'promptText too long (max 10000)' });
+    if (description && description.length > 500) return res.status(400).json({ error: 'description too long (max 500)' });
+    if (tags && tags.length > 500) return res.status(400).json({ error: 'tags too long (max 500)' });
 
     const db = await cds.connect.to('db');
     const now = new Date().toISOString();

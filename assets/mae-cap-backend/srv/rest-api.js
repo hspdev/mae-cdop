@@ -69,7 +69,15 @@ async function directProcess(jobType, parameters, simulationMode, db) {
 }
 
 // ── Middleware: parse JSON ─────────────────────────────────────────────────
-router.use(express.json({ limit: '50mb' }));
+router.use(express.json({ limit: '2mb' }));
+
+// ── Enum whitelists ────────────────────────────────────────────────────────
+const VALID_BILLING_CLASSES   = new Set(['STANDARD','BUDGET','PREPAID','COMMERCIAL','INDUSTRIAL','PREMIUM','BASIC']);
+const VALID_CHANNELS          = new Set(['EMAIL','SMS','PHONE','MAIL','PUSH']);
+const VALID_NOTIFICATION_TYPES = new Set(['OUTAGE_ALERT','BILLING_REMINDER','PAYMENT_DUE','SERVICE_UPDATE','EMERGENCY','ADDRESS_CONFIRMATION']);
+const VALID_ACCOUNT_TYPES     = new Set(['RESIDENTIAL','COMMERCIAL','INDUSTRIAL']);
+const VALID_STATUSES          = new Set(['ACTIVE','INACTIVE']);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * POST /api/bulk-jobs/:jobType
@@ -405,6 +413,10 @@ router.patch('/contracts/:contractAccount/address', async (req, res) => {
     if (!streetAddress || !city || !stateCode || !zipCode) {
       return res.status(400).json({ error: 'streetAddress, city, stateCode, zipCode are required' });
     }
+    if (typeof streetAddress !== 'string' || streetAddress.length > 200) return res.status(400).json({ error: 'streetAddress invalid' });
+    if (typeof city !== 'string' || city.length > 100) return res.status(400).json({ error: 'city invalid' });
+    if (!/^[A-Z]{2}$/i.test(stateCode)) return res.status(400).json({ error: 'stateCode must be 2-letter code' });
+    if (!/^\d{5}(-\d{4})?$/.test(zipCode)) return res.status(400).json({ error: 'zipCode must be 5 or 9 digit format' });
 
     const db = await cds.connect.to('db');
 
@@ -525,6 +537,9 @@ router.patch('/contracts/:contractAccount/account', async (req, res) => {
         error: 'At least one of billingClass, status, or accountType is required'
       });
     }
+    if (billingClass && !VALID_BILLING_CLASSES.has(billingClass.toUpperCase())) return res.status(400).json({ error: `Invalid billingClass: ${billingClass}` });
+    if (status && !VALID_STATUSES.has(status.toUpperCase())) return res.status(400).json({ error: `Invalid status: ${status}` });
+    if (accountType && !VALID_ACCOUNT_TYPES.has(accountType.toUpperCase())) return res.status(400).json({ error: `Invalid accountType: ${accountType}` });
 
     const db = await cds.connect.to('db');
 
@@ -574,6 +589,7 @@ router.patch('/contracts/:contractAccount/preference', async (req, res) => {
     if (!channel) {
       return res.status(400).json({ error: 'channel is required' });
     }
+    if (!VALID_CHANNELS.has(channel.toUpperCase())) return res.status(400).json({ error: `Invalid channel: ${channel}` });
 
     const db = await cds.connect.to('db');
 
@@ -777,6 +793,10 @@ router.post('/contracts/:contractAccount/notification', async (req, res) => {
     if (!notificationType || !channel) {
       return res.status(400).json({ error: 'notificationType and channel are required' });
     }
+    if (!VALID_NOTIFICATION_TYPES.has(notificationType.toUpperCase())) return res.status(400).json({ error: `Invalid notificationType: ${notificationType}` });
+    if (!VALID_CHANNELS.has(channel.toUpperCase())) return res.status(400).json({ error: `Invalid channel: ${channel}` });
+    if (subject && subject.length > 200) return res.status(400).json({ error: 'subject too long (max 200)' });
+    if (content && content.length > 5000) return res.status(400).json({ error: 'content too long (max 5000)' });
 
     const db = await cds.connect.to('db');
 
