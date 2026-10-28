@@ -78,7 +78,8 @@ module.exports = class BulkJobServiceHandler extends cds.ApplicationService {
         SELECT.from('mae.db.PerformanceMetrics').where({ BATCH_ID: batchId })
       );
 
-      return JSON.stringify({ job, failures, metrics });
+      const { JOB_PARAMETERS: _stripped, ...safeJob } = job;
+      return JSON.stringify({ job: safeJob, failures, metrics });
     });
 
     this.on('getExecutiveSummary', async (req) => {

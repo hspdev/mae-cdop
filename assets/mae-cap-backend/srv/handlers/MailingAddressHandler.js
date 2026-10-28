@@ -35,6 +35,17 @@ class MailingAddressHandler extends IBulkJobHandler {
       errors.push('Either contractAccounts[] or a filter (city/region/zipCode) is required');
     }
 
+    if (p.filter && p.filter.city !== undefined) {
+      const city = p.filter.city;
+      if (typeof city !== 'string' || city.trim().length === 0) {
+        errors.push('filter.city must be a non-empty string');
+      } else if (city.length > 100) {
+        errors.push('filter.city exceeds maximum length of 100 characters');
+      } else if (!/^[a-zA-Z\s.\-']+$/.test(city)) {
+        errors.push('filter.city contains invalid characters');
+      }
+    }
+
     if (!p.campaignData && !p.useExistingAddressHistory && !p.newAddress) {
       errors.push('Either campaignData, newAddress, or useExistingAddressHistory=true is required');
     }

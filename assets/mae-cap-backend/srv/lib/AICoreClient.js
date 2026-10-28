@@ -73,7 +73,7 @@ class AICoreClient {
         client_id:     clientid,
         client_secret: clientsecret
       }),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 15000 }
     );
 
     this._tokenCache  = response.data.access_token;
@@ -125,7 +125,8 @@ class AICoreClient {
           Authorization:      `Bearer ${token}`,
           'Content-Type':     'application/json',
           'AI-Resource-Group': this.resourceGroup
-        }
+        },
+        timeout: 30000
       }
     );
 

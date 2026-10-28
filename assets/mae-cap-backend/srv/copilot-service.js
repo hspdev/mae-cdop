@@ -70,11 +70,24 @@ module.exports = class CopilotServiceHandler extends cds.ApplicationService {
       const { sessionId, message } = req.data;
       const messageId = uuidv4();
 
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        return req.error(400, 'Message is required');
+      }
+      if (message.length > 5000) {
+        return req.error(400, 'Message exceeds maximum length of 5000 characters');
+      }
+
       // Load session
       const session = await db.run(
         SELECT.one.from('mae.db.CopilotSessions').where({ SESSION_ID: sessionId })
       );
-      if (!session) return req.error(404, `Session ${sessionId} not found`);
+      if (!session) return req.error(404, 'Session not found');
+
+      // Session ownership check
+      const requestingUser = req.user?.id || 'anonymous';
+      if (session.USER_ID !== requestingUser && session.USER_ID !== 'anonymous') {
+        return req.error(403, 'Access denied');
+      }
 
       // Store user message
       await db.run(
@@ -185,7 +198,7 @@ module.exports = class CopilotServiceHandler extends cds.ApplicationService {
     const tokenResponse = await axios.post(
       `${tokenurl}/oauth/token`,
       new URLSearchParams({ grant_type: 'client_credentials', client_id: clientid, client_secret: clientsecret }),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 15000 }
     );
     const token = tokenResponse.data.access_token;
 
@@ -203,7 +216,8 @@ module.exports = class CopilotServiceHandler extends cds.ApplicationService {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
           'AI-Resource-Group': process.env.AI_RESOURCE_GROUP || 'default'
-        }
+        },
+        timeout: 30000
       }
     );
 
