@@ -1,0 +1,23 @@
+{
+  "authenticationMethod": "route",
+  "routes": [
+    {
+      "source": "^/api/(.*)$",
+      "target": "/api/$1",
+      "destination": "mae-cap-backend",
+      "authenticationType": "xsuaa"
+    },
+    {
+      "source": "^/odata/(.*)$",
+      "target": "/odata/$1",
+      "destination": "mae-cap-backend",
+      "authenticationType": "xsuaa"
+    },
+    {
+      "source": "^/(.*)$",
+      "target": "/$1",
+      "localDir": "webapp",
+      "authenticationType": "xsuaa"
+    }
+  ]
+}
