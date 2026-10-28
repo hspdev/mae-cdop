@@ -11,6 +11,30 @@ const promptApi     = require('./srv/prompt-api');
 const path          = require('path');
 const fs            = require('fs');
 
+// ── Security headers middleware ───────────────────────────────────────────────
+function securityHeaders(req, res, next) {
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('X-Frame-Options', 'DENY');
+  res.set('X-XSS-Protection', '1; mode=block');
+  res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.set('Cache-Control', 'no-store');
+  next();
+}
+
+// ── Simple in-memory rate limiter (per IP, 100 req/min) ──────────────────────
+const _rateLimitMap = new Map();
+function rateLimit(req, res, next) {
+  if (req.path === '/health') return next();
+  const ip  = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const now = Date.now();
+  const win = _rateLimitMap.get(ip) || { count: 0, start: now };
+  if (now - win.start > 60000) { win.count = 0; win.start = now; }
+  win.count++;
+  _rateLimitMap.set(ip, win);
+  if (win.count > 100) return res.status(429).json({ error: 'Too many requests' });
+  next();
+}
+
 // ── Basic Auth — protects direct backend URL access ───────────────────────────
 // /health is exempted so CF platform health checks always pass.
 // Requests forwarded by the approuter arrive with the internal CF hostname and
@@ -37,6 +61,8 @@ function basicAuth(req, res, next) {
 }
 
 cds.on('bootstrap', (app) => {
+  app.use(securityHeaders);
+  app.use(rateLimit);
   app.use(basicAuth);
   app.use('/api', restApi);
   app.use('/api/prompts', promptApi);

@@ -481,30 +481,26 @@ router.get('/', async (req, res) => {
     const db = await cds.connect.to('db');
     const { category, persona, status, search, favorite, recommended, limit = 200, offset = 0 } = req.query;
 
+    const lim = Math.min(Math.max(1, Number(limit) || 200), 500);
+    const off = Math.max(0, Number(offset) || 0);
+
     const buildWhere = () => {
-      const where = [];
-      if (status)      where.push(`STATUS = '${status.replace(/'/g, "''")}'`);
-      else             where.push(`STATUS != 'RETIRED'`);
-      if (category)    where.push(`CATEGORY = '${category.replace(/'/g, "''")}'`);
-      if (persona)     where.push(`PERSONA = '${persona.replace(/'/g, "''")}'`);
-      if (favorite === 'true')     where.push(`IS_FAVORITE = 1`);
-      if (recommended === 'true')  where.push(`IS_RECOMMENDED = 1`);
-      if (search) {
-        const s = search.replace(/'/g, "''");
-        where.push(`(TITLE like '%${s}%' OR DESCRIPTION like '%${s}%' OR TAGS like '%${s}%')`);
-      }
+      const where = {};
+      where.STATUS = status || { '!=': 'RETIRED' };
+      if (category)              where.CATEGORY    = category;
+      if (persona)               where.PERSONA     = persona;
+      if (favorite === 'true')   where.IS_FAVORITE = 1;
+      if (recommended === 'true') where.IS_RECOMMENDED = 1;
       return where;
     };
 
-    const where = buildWhere();
-    let query = SELECT.from('mae.db.PromptLibrary');
-    if (where.length) query = query.where(where.join(' AND '));
-    query = query.orderBy('IS_RECOMMENDED desc, USAGE_COUNT desc, CREATED_ON desc').limit(Number(limit), Number(offset));
+    const whereObj = buildWhere();
+    let query = SELECT.from('mae.db.PromptLibrary').where(whereObj);
+    if (search) query = query.where(`TITLE like '%${search.replace(/'/g,"''")}%' OR DESCRIPTION like '%${search.replace(/'/g,"''")}%'`);
+    query = query.orderBy('IS_RECOMMENDED desc, USAGE_COUNT desc, CREATED_ON desc').limit(lim, off);
 
-    // Also get all prompts for total count and category list (without pagination)
-    let countQuery = SELECT.from('mae.db.PromptLibrary').columns('CATEGORY');
-    const baseWhere = buildWhere();
-    if (baseWhere.length) countQuery = countQuery.where(baseWhere.join(' AND '));
+    let countQuery = SELECT.from('mae.db.PromptLibrary').columns('CATEGORY').where(whereObj);
+    if (search) countQuery = countQuery.where(`TITLE like '%${search.replace(/'/g,"''")}%' OR DESCRIPTION like '%${search.replace(/'/g,"''")}%'`);
 
     const [prompts, allForCount] = await Promise.all([
       db.run(query),
@@ -515,7 +511,7 @@ router.get('/', async (req, res) => {
 
     res.json({ total: allForCount.length, count: prompts.length, offset: Number(offset), categories, prompts });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -532,7 +528,7 @@ router.get('/recommended', async (req, res) => {
     );
     res.json({ count: prompts.length, prompts });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -598,7 +594,7 @@ router.get('/analytics/summary', async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -647,7 +643,7 @@ router.post('/', async (req, res) => {
     );
     res.status(201).json(created);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -688,7 +684,7 @@ router.put('/:id', async (req, res) => {
     );
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -709,7 +705,7 @@ router.delete('/:id', async (req, res) => {
     );
     res.json({ success: true, promptId: req.params.id, status: 'RETIRED' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -820,7 +816,7 @@ router.post('/:id/execute', async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -868,7 +864,7 @@ router.get('/:id/analytics', async (req, res) => {
       testResults
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -995,7 +991,7 @@ router.post('/:id/test', async (req, res) => {
       results
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1018,7 +1014,7 @@ router.post('/:id/favorite', async (req, res) => {
 
     res.json({ promptId: req.params.id, isFavorite: newValue });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1125,7 +1121,7 @@ router.post('/:id/optimize', async (req, res) => {
       improvedPromptText:  improvedText
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err); res.status(500).json({ error: 'Internal server error' });
   }
 });
 
