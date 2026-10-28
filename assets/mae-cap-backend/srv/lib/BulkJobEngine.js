@@ -63,7 +63,7 @@ class BulkJobEngine {
         FAILED_COUNT:    0,
         RETRY_COUNT:     0,
         SIMULATION_MODE: simulationMode,
-        JOB_PARAMETERS:  JSON.stringify(parameters),
+        JOB_PARAMETERS:  (() => { const s = JSON.stringify(parameters); return s.length > 65536 ? s.substring(0, 65536) : s; })(),
         REQUESTED_BY:    requestedBy || 'SYSTEM',
         DESCRIPTION:     description || `${jobType} job`,
         CREATED_ON:      now,

@@ -156,6 +156,14 @@ module.exports = class CopilotServiceHandler extends cds.ApplicationService {
 
     this.on('clearSession', async (req) => {
       const { sessionId } = req.data;
+      const session = await db.run(
+        SELECT.one.from('mae.db.CopilotSessions').where({ SESSION_ID: sessionId })
+      );
+      if (!session) return req.error(404, 'Session not found');
+      const requestingUser = req.user?.id || 'anonymous';
+      if (session.USER_ID !== requestingUser && session.USER_ID !== 'anonymous') {
+        return req.error(403, 'Access denied');
+      }
       await db.run(UPDATE('mae.db.CopilotSessions').set({ STATUS: 'CLOSED' }).where({ SESSION_ID: sessionId }));
       return { success: true };
     });

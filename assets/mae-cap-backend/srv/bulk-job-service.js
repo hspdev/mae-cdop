@@ -118,7 +118,7 @@ module.exports = class BulkJobServiceHandler extends cds.ApplicationService {
       totals.fromDate = from;
       totals.toDate   = to;
 
-      return JSON.stringify({ summary: totals, jobs });
+      return JSON.stringify({ summary: totals, jobs: jobs.map(({ JOB_PARAMETERS: _p, ...j }) => j) });
     });
 
     await super.init();

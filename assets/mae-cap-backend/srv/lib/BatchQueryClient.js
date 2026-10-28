@@ -91,8 +91,7 @@ class BatchQueryClient {
     // Step 1: recent address changes in that city using CDS API
     const historyRows = await this.db.run(
       SELECT.from('mae.db.AddressHistory')
-        .where({ NEW_CITY: { like: `%${city}%` } })
-        .where(`CHANGE_DATE >= '${cutoff}'`)
+        .where({ NEW_CITY: { like: `%${city}%` }, CHANGE_DATE: { '>=': cutoff } })
     );
 
     if (!historyRows || historyRows.length === 0) return [];
