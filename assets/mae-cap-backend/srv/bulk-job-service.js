@@ -9,6 +9,12 @@ const cds                = require('@sap/cds');
 const { BulkJobEngine }  = require('./lib/BulkJobEngine');
 const { v4: uuidv4 }     = require('uuid');
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function _validateBatchId(batchId, req) {
+  if (!batchId || !UUID_RE.test(batchId)) return req.error(400, 'Invalid batchId format');
+  return null;
+}
+
 module.exports = class BulkJobServiceHandler extends cds.ApplicationService {
 
   async init() {
@@ -44,11 +50,13 @@ module.exports = class BulkJobServiceHandler extends cds.ApplicationService {
     });
 
     this.on('cancelBulkJob', async (req) => {
+      if (_validateBatchId(req.data.batchId, req)) return;
       const engine = new BulkJobEngine(db);
       return await engine.cancelJob(req.data.batchId);
     });
 
     this.on('reprocessBulkJob', async (req) => {
+      if (_validateBatchId(req.data.batchId, req)) return;
       const engine = new BulkJobEngine(db);
       const { batchId, onlyFailed, simulationMode } = req.data;
       const { newBatchId } = await engine.reprocessJob(batchId, { onlyFailed, simulationMode });
@@ -63,6 +71,7 @@ module.exports = class BulkJobServiceHandler extends cds.ApplicationService {
 
     this.on('getJobSummary', async (req) => {
       const { batchId } = req.data;
+      if (_validateBatchId(batchId, req)) return;
       const job = await db.run(
         SELECT.one.from('mae.db.BatchJobs').where({ BATCH_ID: batchId })
       );
@@ -91,7 +100,7 @@ module.exports = class BulkJobServiceHandler extends cds.ApplicationService {
         : new Date().toISOString().substring(0, 10);
       const jobs = await db.run(
         SELECT.from('mae.db.BatchJobs')
-          .where(`CREATED_ON >= '${from}T00:00:00Z' AND CREATED_ON <= '${to}T23:59:59Z'`)
+          .where({ CREATED_ON: { '>=': `${from}T00:00:00Z`, '<=': `${to}T23:59:59Z` } })
           .orderBy('CREATED_ON desc')
       );
 

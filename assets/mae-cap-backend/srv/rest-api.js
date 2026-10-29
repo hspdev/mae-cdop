@@ -77,6 +77,8 @@ const VALID_CHANNELS          = new Set(['EMAIL','SMS','PHONE','MAIL','PUSH']);
 const VALID_NOTIFICATION_TYPES = new Set(['OUTAGE_ALERT','BILLING_REMINDER','PAYMENT_DUE','SERVICE_UPDATE','EMERGENCY','ADDRESS_CONFIRMATION']);
 const VALID_ACCOUNT_TYPES     = new Set(['RESIDENTIAL','COMMERCIAL','INDUSTRIAL']);
 const VALID_STATUSES          = new Set(['ACTIVE','INACTIVE']);
+const VALID_PREFERRED_LANGUAGES = new Set(['ENGLISH','SPANISH','EN','ES']);
+const VALID_CHANGE_SOURCES    = new Set(['CUSTOMER_PORTAL','NCOA','MANUAL','BULK_UPDATE','DIRECT_UPDATE']);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -94,6 +96,12 @@ const VALID_JOB_TYPES = new Set([
   'CUSTOMER_PREFERENCE_UPDATE',
   'NOTIFICATION_REQUEST'
 ]);
+
+// Validate batchId path param on all /bulk-jobs/:batchId routes
+router.param('batchId', (req, res, next, id) => {
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Invalid batchId format' });
+  next();
+});
 
 router.post('/bulk-jobs/:jobType', async (req, res) => {
   try {
@@ -304,7 +312,7 @@ router.get('/summary', async (req, res) => {
 
     const jobs = await db.run(
       SELECT.from('mae.db.BatchJobs')
-        .where(`CREATED_ON >= '${from}T00:00:00Z' AND CREATED_ON <= '${to}T23:59:59Z'`)
+        .where({ CREATED_ON: { '>=': `${from}T00:00:00Z`, '<=': `${to}T23:59:59Z` } })
         .orderBy('CREATED_ON desc')
     );
 
@@ -681,12 +689,16 @@ router.get('/customers/search', async (req, res) => {
       accounts = await db.run(q);
     }
 
-    // Enrich with customer name if available
-    const enriched = await Promise.all(accounts.map(async (a) => {
+    // Enrich with customer names — single batched query instead of N+1
+    const customerIds = [...new Set(accounts.map(a => a.CUSTOMER_ID || a.customerId).filter(Boolean))];
+    const customers = customerIds.length > 0
+      ? await db.run(SELECT.from('mae.db.Customers').where({ CUSTOMER_ID: { in: customerIds } })).catch(() => [])
+      : [];
+    const customerMap = Object.fromEntries(customers.map(c => [c.CUSTOMER_ID, c]));
+
+    const enriched = accounts.map((a) => {
       const cid = a.CUSTOMER_ID || a.customerId;
-      const customer = cid
-        ? await db.run(SELECT.one.from('mae.db.Customers').where({ CUSTOMER_ID: cid })).catch(() => null)
-        : null;
+      const customer = cid ? customerMap[cid] : null;
       return {
         CONTRACT_ACCOUNT: a.CONTRACT_ACCOUNT,
         CUSTOMER_ID: a.CUSTOMER_ID,
@@ -698,7 +710,7 @@ router.get('/customers/search', async (req, res) => {
         STATUS: a.STATUS || 'ACTIVE',
         EMAIL: customer ? customer.EMAIL : ''
       };
-    }));
+    });
 
     res.json({ count: enriched.length, records: enriched });
   } catch (err) {
@@ -718,8 +730,8 @@ router.get('/insights', async (req, res) => {
     const from90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
 
     const [jobs30, jobs90] = await Promise.all([
-      db.run(SELECT.from('mae.db.BatchJobs').where(`CREATED_ON >= '${from30}T00:00:00Z'`)),
-      db.run(SELECT.from('mae.db.BatchJobs').where(`CREATED_ON >= '${from90}T00:00:00Z'`))
+      db.run(SELECT.from('mae.db.BatchJobs').where({ CREATED_ON: { '>=': `${from30}T00:00:00Z` } })),
+      db.run(SELECT.from('mae.db.BatchJobs').where({ CREATED_ON: { '>=': `${from90}T00:00:00Z` } }))
     ]);
 
     const perfJobs = jobs30.filter(j => j.DURATION_SECONDS && j.TOTAL_ACCOUNTS > 0);
@@ -886,13 +898,14 @@ router.get('/bulk-read/customers', async (req, res) => {
     } = req.query;
 
     const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
-    const off = Number(offset) || 0;
+    const off = Math.max(Number(offset) || 0, 0);
 
     let q = SELECT.from('mae.db.Customers')
       .columns('CUSTOMER_ID','BUSINESS_PARTNER','FIRST_NAME','LAST_NAME','FULL_NAME',
                'EMAIL','PHONE','CUSTOMER_SEGMENT','STATUS','CITY','STATE_CODE',
                'ZIP_CODE','REGION','NOTIFICATION_OPT_IN','CREATED_ON','LAST_UPDATED')
-      .orderBy('LAST_UPDATED desc');
+      .orderBy('LAST_UPDATED desc')
+      .limit(lim, off);
 
     const where = {};
     if (status)            where.STATUS            = status.toUpperCase();
@@ -906,21 +919,14 @@ router.get('/bulk-read/customers', async (req, res) => {
     }
     if (Object.keys(where).length > 0) q = q.where(where);
 
-    const all = await db.run(q);
-    const page = all.slice(off, off + lim);
+    const page = await db.run(q);
 
     res.json({
       entity:   'Customers',
-      total:    all.length,
       count:    page.length,
       offset:   off,
       limit:    lim,
       filters:  { status, segment, stateCode, region, city, zipCode, notificationOptIn },
-      summary: {
-        bySegment: buildSummary(all, 'CUSTOMER_SEGMENT'),
-        byRegion:  buildSummary(all, 'REGION'),
-        byState:   buildSummary(all, 'STATE_CODE')
-      },
       records: page.map(r => ({
         customerId:        r.CUSTOMER_ID,
         businessPartner:   r.BUSINESS_PARTNER,
@@ -953,10 +959,11 @@ router.get('/bulk-read/contracts', async (req, res) => {
     } = req.query;
 
     const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
-    const off = Number(offset) || 0;
+    const off = Math.max(Number(offset) || 0, 0);
 
     let q = SELECT.from('mae.db.ContractAccounts')
-      .orderBy('LAST_UPDATED desc');
+      .orderBy('LAST_UPDATED desc')
+      .limit(lim, off);
 
     const where = {};
     if (status)       where.STATUS       = status.toUpperCase();
@@ -968,21 +975,14 @@ router.get('/bulk-read/contracts', async (req, res) => {
     if (customerId)   where.CUSTOMER_ID  = customerId;
     if (Object.keys(where).length > 0) q = q.where(where);
 
-    const all = await db.run(q);
-    const page = all.slice(off, off + lim);
+    const page = await db.run(q);
 
     res.json({
       entity:   'ContractAccounts',
-      total:    all.length,
       count:    page.length,
       offset:   off,
       limit:    lim,
       filters:  { status, accountType, billingClass, stateCode, city, zipCode, customerId },
-      summary: {
-        byAccountType:  buildSummary(all, 'ACCOUNT_TYPE'),
-        byBillingClass: buildSummary(all, 'BILLING_CLASS'),
-        byState:        buildSummary(all, 'STATE_CODE')
-      },
       records: page.map(r => ({
         contractAccount: r.CONTRACT_ACCOUNT,
         customerId:      r.CUSTOMER_ID,
@@ -1015,10 +1015,18 @@ router.get('/bulk-read/preferences', async (req, res) => {
     } = req.query;
 
     const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
-    const off = Number(offset) || 0;
+    const off = Math.max(Number(offset) || 0, 0);
+
+    if (channel && !VALID_CHANNELS.has(channel.toUpperCase())) {
+      return res.status(400).json({ error: `Invalid channel: ${channel}` });
+    }
+    if (preferredLanguage && !VALID_PREFERRED_LANGUAGES.has(preferredLanguage.toUpperCase())) {
+      return res.status(400).json({ error: `Invalid preferredLanguage: ${preferredLanguage}` });
+    }
 
     let q = SELECT.from('mae.db.CustomerPreferences')
-      .orderBy('LAST_UPDATED desc');
+      .orderBy('LAST_UPDATED desc')
+      .limit(lim, off);
 
     const where = {};
     if (channel)           where.CHANNEL            = channel.toUpperCase();
@@ -1028,23 +1036,14 @@ router.get('/bulk-read/preferences', async (req, res) => {
     }
     if (Object.keys(where).length > 0) q = q.where(where);
 
-    const all = await db.run(q);
-    const page = all.slice(off, off + lim);
+    const page = await db.run(q);
 
     res.json({
       entity:   'CustomerPreferences',
-      total:    all.length,
       count:    page.length,
       offset:   off,
       limit:    lim,
       filters:  { channel, optedIn, preferredLanguage },
-      summary: {
-        byChannel:  buildSummary(all, 'CHANNEL'),
-        byLanguage: buildSummary(all, 'PREFERRED_LANGUAGE'),
-        optInRate:  all.length > 0
-          ? Math.round((all.filter(r => r.OPTED_IN).length / all.length) * 100) + '%'
-          : 'N/A'
-      },
       records: page.map(r => ({
         preferenceId:      r.PREFERENCE_ID,
         customerId:        r.CUSTOMER_ID,
@@ -1072,33 +1071,32 @@ router.get('/bulk-read/address-history', async (req, res) => {
     } = req.query;
 
     const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
-    const off = Number(offset) || 0;
-    const cutoff = new Date(Date.now() - Number(days) * 86400000).toISOString();
+    const off = Math.max(Number(offset) || 0, 0);
+    const daysNum = Math.min(Math.max(Number(days) || 90, 1), 365);
+    const cutoff = new Date(Date.now() - daysNum * 86400000).toISOString();
+
+    if (changeSource && !VALID_CHANGE_SOURCES.has(changeSource.toUpperCase())) {
+      return res.status(400).json({ error: `Invalid changeSource: ${changeSource}` });
+    }
 
     const where = { CHANGE_DATE: { '>=': cutoff } };
     if (city)         where.NEW_CITY      = { like: `%${city}%` };
     if (stateCode)    where.NEW_STATE_CODE = stateCode.toUpperCase();
-    if (changeSource) where.CHANGE_SOURCE  = changeSource;
+    if (changeSource) where.CHANGE_SOURCE  = changeSource.toUpperCase();
 
-    let q = SELECT.from('mae.db.AddressHistory')
-      .where(where)
-      .orderBy('CHANGE_DATE desc');
-
-    const all = await db.run(q);
-    const page = all.slice(off, off + lim);
+    const page = await db.run(
+      SELECT.from('mae.db.AddressHistory')
+        .where(where)
+        .orderBy('CHANGE_DATE desc')
+        .limit(lim, off)
+    );
 
     res.json({
       entity:   'AddressHistory',
-      total:    all.length,
       count:    page.length,
       offset:   off,
       limit:    lim,
-      filters:  { city, stateCode, days, changeSource },
-      summary: {
-        byChangeSource: buildSummary(all, 'CHANGE_SOURCE'),
-        byNewCity:      buildSummary(all, 'NEW_CITY').slice(0, 10),
-        byNewState:     buildSummary(all, 'NEW_STATE_CODE')
-      },
+      filters:  { city, stateCode, days: daysNum, changeSource },
       records: page.map(r => ({
         historyId:       r.HISTORY_ID,
         contractAccount: r.CONTRACT_ACCOUNT,
@@ -1120,26 +1118,21 @@ router.get('/bulk-read/no-optin-customers', async (req, res) => {
     const db = await cds.connect.to('db');
     const { limit = 100, offset = 0 } = req.query;
     const lim = Math.min(Number(limit) || 100, MAX_BULK_READ);
-    const off = Number(offset) || 0;
+    const off = Math.max(Number(offset) || 0, 0);
 
-    const all = await db.run(
+    const page = await db.run(
       SELECT.from('mae.db.Customers')
         .where({ NOTIFICATION_OPT_IN: false })
         .orderBy('LAST_UPDATED desc')
+        .limit(lim, off)
     );
-    const page = all.slice(off, off + lim);
 
     res.json({
       entity:   'Customers',
       subType:  'NoOptIn',
-      total:    all.length,
       count:    page.length,
       offset:   off,
       limit:    lim,
-      summary: {
-        bySegment: buildSummary(all, 'CUSTOMER_SEGMENT'),
-        byRegion:  buildSummary(all, 'REGION')
-      },
       records: page.map(r => ({
         customerId:  r.CUSTOMER_ID,
         fullName:    r.FULL_NAME || `${r.FIRST_NAME} ${r.LAST_NAME}`,

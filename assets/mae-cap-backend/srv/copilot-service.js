@@ -15,11 +15,7 @@
 
 const cds       = require('@sap/cds');
 const { v4: uuidv4 } = require('uuid');
-const axios     = require('axios');
-
-// ── Model / Deployment configuration ─────────────────────────────────────────
-const MODEL         = process.env.AI_MODEL         || 'gpt-4o';
-const DEPLOYMENT_ID = process.env.AI_DEPLOYMENT_ID || MODEL;
+const { AICoreClient } = require('./lib/AICoreClient');
 
 // ── System Prompt for Operations Copilot ─────────────────────────────────────
 const SYSTEM_PROMPT = `You are the DUCI Operations Copilot for Demo Utilities Company Inc.
@@ -172,64 +168,17 @@ module.exports = class CopilotServiceHandler extends cds.ApplicationService {
   }
 
   _getAICoreCredentials() {
-    // CF: read from VCAP_SERVICES (bound aicore service instance)
-    if (process.env.VCAP_SERVICES) {
-      try {
-        const vcap = JSON.parse(process.env.VCAP_SERVICES);
-        const aicore = vcap['aicore'] || vcap['AICORE_SERVICE'] || [];
-        if (aicore.length > 0) {
-          return aicore[0].credentials;
-        }
-      } catch {}
-    }
-    // Local dev: read from AICORE_SERVICE_KEY env var
-    if (process.env.AICORE_SERVICE_KEY) {
-      try {
-        return JSON.parse(process.env.AICORE_SERVICE_KEY);
-      } catch {}
-    }
-    return null;
+    const client = new AICoreClient();
+    return client.credentials;
   }
 
   async _callGenAIHub(messages) {
-    // SAP AI Core / Generative AI Hub endpoint
-    // Reads credentials from VCAP_SERVICES (CF) or AICORE_SERVICE_KEY (local dev)
-    const credentials = this._getAICoreCredentials();
-
-    if (!credentials) {
+    const client = new AICoreClient();
+    if (!client.isAvailable()) {
       throw new Error('AI Core credentials not configured. Set VCAP_SERVICES (CF) or AICORE_SERVICE_KEY (local).');
     }
-
-    const { url, clientid, clientsecret, tokenurl } = credentials;
-
-    // Get OAuth token
-    const tokenResponse = await axios.post(
-      `${tokenurl}/oauth/token`,
-      new URLSearchParams({ grant_type: 'client_credentials', client_id: clientid, client_secret: clientsecret }),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 15000 }
-    );
-    const token = tokenResponse.data.access_token;
-
-    // Call completions endpoint using resolved DEPLOYMENT_ID / MODEL constants
-    const completionResponse = await axios.post(
-      `${url}/v2/inference/deployments/${DEPLOYMENT_ID}/chat/completions`,
-      {
-        messages,
-        max_tokens: 2000,
-        temperature: 0.2,
-        top_p: 0.95
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'AI-Resource-Group': process.env.AI_RESOURCE_GROUP || 'default'
-        },
-        timeout: 30000
-      }
-    );
-
-    const content = completionResponse.data.choices[0]?.message?.content || '';
+    const result = await client.complete(messages, { maxTokens: 2000, temperature: 0.2, topP: 0.95 });
+    const content = result.content;
 
     // Extract structured actions if JSON block present
     let actions = null;

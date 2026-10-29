@@ -131,7 +131,7 @@ class BulkJobEngine {
         logger, 1
       );
       if (!validation.valid) {
-        await this._failJob(batchId, `Validation failed: ${validation.errors.join('; ')}`);
+        await this._failJob(batchId, 'Validation failed');
         return { success: false, errors: validation.errors };
       }
 
@@ -194,7 +194,7 @@ class BulkJobEngine {
 
     } catch (err) {
       logger.error(`[${batchId}] Engine error: ${err.message}`, { stack: err.stack });
-      await this._failJob(batchId, err.message);
+      await this._failJob(batchId, 'Job processing error');
       throw err;
     }
   }

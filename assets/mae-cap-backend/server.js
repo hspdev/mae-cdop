@@ -23,6 +23,14 @@ function securityHeaders(req, res, next) {
 
 // ── Simple in-memory rate limiter (per IP, 100 req/min) ──────────────────────
 const _rateLimitMap = new Map();
+// Evict expired windows every 5 minutes to prevent unbounded memory growth
+setInterval(() => {
+  const cutoff = Date.now() - 60000;
+  for (const [ip, win] of _rateLimitMap) {
+    if (win.start < cutoff) _rateLimitMap.delete(ip);
+  }
+}, 300000).unref();
+
 function rateLimit(req, res, next) {
   if (req.path === '/health') return next();
   const ip  = req.ip || req.headers['x-forwarded-for'] || 'unknown';
@@ -42,19 +50,38 @@ function rateLimit(req, res, next) {
 // X-Forwarded-Host check (approuter strips the public host).
 const _AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD;
 const _AUTH_REALM    = 'MAE Operations Platform';
+const crypto         = require('crypto');
+
+function _timingSafePasswordCheck(provided, expected) {
+  if (!provided || !expected) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) {
+    // Still run timingSafeEqual on same-length buffers to avoid length leak
+    crypto.timingSafeEqual(Buffer.alloc(b.length), Buffer.alloc(b.length));
+    return false;
+  }
+  return crypto.timingSafeEqual(a, b);
+}
 
 function basicAuth(req, res, next) {
   // Always allow CF health-check probe
   if (req.path === '/health') return next();
-  // Allow requests forwarded internally by the approuter (no public Host)
-  const host = (req.headers['x-forwarded-host'] || req.headers['host'] || '');
-  if (!host.includes('mae-cap-backend.cfapps')) return next();
+  // Allow requests forwarded internally by the approuter (no public Host).
+  // Only trust the CF-injected x-forwarded-host, never the user-supplied host header,
+  // to prevent auth bypass via host header spoofing.
+  const forwardedHost = req.headers['x-forwarded-host'] || '';
+  const directHost    = req.headers['host'] || '';
+  // If the request arrived via CF approuter it will have x-forwarded-host set
+  // to the approuter's public URL (not the backend URL), so the backend URL
+  // will only appear in the direct host header when bypassing the approuter.
+  if (forwardedHost && !directHost.includes('mae-cap-backend.cfapps')) return next();
 
   const authHeader = req.headers['authorization'] || '';
   if (authHeader.startsWith('Basic ') && _AUTH_PASSWORD) {
     const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
     const password = decoded.includes(':') ? decoded.split(':').slice(1).join(':') : decoded;
-    if (password === _AUTH_PASSWORD) return next();
+    if (_timingSafePasswordCheck(password, _AUTH_PASSWORD)) return next();
   }
   res.set('WWW-Authenticate', `Basic realm="${_AUTH_REALM}"`);
   res.status(401).send('Unauthorized — password required');
@@ -78,7 +105,7 @@ cds.on('bootstrap', (app) => {
       }
       const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
       const password = decoded.includes(':') ? decoded.split(':').slice(1).join(':') : decoded;
-      if (password !== _AUTH_PASSWORD) {
+      if (!_timingSafePasswordCheck(password, _AUTH_PASSWORD)) {
         res.set('WWW-Authenticate', `Basic realm="${_AUTH_REALM}"`);
         return res.status(401).send('Unauthorized');
       }
